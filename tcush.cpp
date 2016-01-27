@@ -1,6 +1,6 @@
 //*********************************************************
 //
-// Will Taylor & James Stewart
+// James Stewart and Will Taylor
 // Operating Systems
 // Project #2: Writing Your Own Shell: myish
 //
@@ -174,16 +174,16 @@ void executeExternalCommand(char* toks[]){
 
     int exec = execvp(toks[0], toks);
 
-    if(exec == -1) perror("ERROR: Execution of external command has failed. Check for typos.");
+    if(exec < 0) perror("ERROR: Execution of external command has failed. Check for typos.");
 
   } else {
     // We are the parent.
 
     // Wait on the child process to terminate
-    waitpid(child_pid, &child_status, WUNTRACED);
+    do {
+        child_pid = waitpid(child_pid, &child_status, WUNTRACED);
+    } while (!WIFEXITED(child_status) && !WIFSIGNALED(child_status));
   }
-
-
 }
 
 void recordCommand(char* toks[]){
