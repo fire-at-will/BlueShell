@@ -23,6 +23,8 @@
 #include <queue>
 #include <ctime>
 #include <string>
+#include <cerrno>
+#include <cstdio>
 
 using namespace std;
 
@@ -42,6 +44,9 @@ void printQueue(queue <string> queueToPrint);
 bool commandIsInternal(string command);
 void executeInternalCommand(char* toks[]);
 
+// External Command Execution Functions
+void executeExternalCommand(char* toks[]);
+
 
 //*********************************************************
 //
@@ -53,7 +58,7 @@ using namespace std;
 //{
   extern char **gettoks();
   extern const int NUMBER_OF_INTERNAL_COMMANDS = 3;
-  string INTERNAL_COMMANDS [NUMBER_OF_INTERNAL_COMMANDS] = {"history", "!!", "!%d"};
+  string INTERNAL_COMMANDS [NUMBER_OF_INTERNAL_COMMANDS] = {"history", "!"};
 //}
 
 //*********************************************************
@@ -63,16 +68,17 @@ using namespace std;
 //*********************************************************
 
 queue <string> history;     // Queue to hold the command history in
-string shell = "                                              `.\n                                          `.-/o:\n                                       ``..-:+sy`\n                                    ``..--:+oys-.\n                                 ``...-://+os++oo     ----- Blue Shell -----\n    `.           :            ``...-:::::/+o+oy/`     |                    |\n    `oo.        /o/        ``...-:::--:/oooooo+.      |By Will Taylor      |\n     +ss-`     //:+:      `..-:::--:/+oo++++oss`      |and                 |\n     :o+os:/osyhyyyhyo:` `.-://::///++//+osys:`       |James Stewart       |\n     :+/.-/shhddhhhdddhy..--//::////+oooooooo         |                    |\n  ``./so:``:yhdhhhyo:.`-.-:://://+++ooooosy+`         |--------------------|\n  `+oymhs/+hhdmdhdy-  .:-::://////++osyys:`\n    ommddddmmmhhdddy+:/o:::::///+++osysy`\n    ydhyyyyhdddhhmmmmmmdo//////++ooooos:\n `/+/:::-....--:/+osssyyhyooooooooss+:`\n soooosyss+/::----::::://///+++oyhd.\n +hyhdNMMMN/:+hdhhyysooooossssysso-                   Look out, first place.\n  -/symMMm+.-+NMMMMmh++ssyhdmm/\n    `+so+/++//odmmho//oosyhdms\n       omhyso++oo//:/ossyhdm+\n        -ydhhyyso+oosyyyhho.\n          ./syhddddhhys+:`\n               ````` ";
+
+// Welcome message
+string blue_shell_ascii_art = "                                              `.\n                                          `.-/o:\n                                       ``..-:+sy`\n                                    ``..--:+oys-.\n                                 ``...-://+os++oo     ----- Blue Shell -----\n    `.           :            ``...-:::::/+o+oy/`     |                    |\n    `oo.        /o/        ``...-:::--:/oooooo+.      |By Will Taylor      |\n     +ss-`     //:+:      `..-:::--:/+oo++++oss`      |and                 |\n     :o+os:/osyhyyyhyo:` `.-://::///++//+osys:`       |James Stewart       |\n     :+/.-/shhddhhhdddhy..--//::////+oooooooo         |                    |\n  ``./so:``:yhdhhhyo:.`-.-:://://+++ooooosy+`         |--------------------|\n  `+oymhs/+hhdmdhdy-  .:-::://////++osyys:`\n    ommddddmmmhhdddy+:/o:::::///+++osysy`\n    ydhyyyyhdddhhmmmmmmdo//////++ooooos:\n `/+/:::-....--:/+osssyyhyooooooooss+:`\n soooosyss+/::----::::://///+++oyhd.\n +hyhdNMMMN/:+hdhhyysooooossssysso-                   Look out, first place.\n  -/symMMm+.-+NMMMMmh++ssyhdmm/\n    `+so+/++//odmmho//oosyhdms\n       omhyso++oo//:/ossyhdm+\n        -ydhhyyso+oosyyyhho.\n          ./syhddddhhys+:`\n               ````` ";
 
 //*********************************************************
 //
 // Main Function
 //
 //*********************************************************
-int main( int argc, char *argv[] )
-{
-  cout << shell << endl;
+int main( int argc, char *argv[] ){
+
   // local variables
   int ii;
   char **toks;
@@ -83,12 +89,15 @@ int main( int argc, char *argv[] )
   toks = NULL;
   retval = 0;
 
+  // Clear terminal screen and print out welcome
+  if (system("CLS")) system("clear");
+  cout << blue_shell_ascii_art << endl;
+
   // main (infinite) loop
   while( true ){
       // get arguments
       displayPrompt();
       toks = gettoks();
-      cout << "TOKEN 1: " << toks[0] << "\n";
 
       if( toks[0] != NULL ){
 	  // simple loop to echo all arguments
@@ -98,12 +107,12 @@ int main( int argc, char *argv[] )
 	  //   }
 
     if(commandIsInternal(toks[0])){
-      cout << "Internal command\n";
       executeInternalCommand(toks);
-
+    } else {
+      executeExternalCommand(toks);
     }
 
-	   if( !strcmp( toks[0], "myexit" ))
+	   if( !strcmp( toks[0], "quit" ))
 	    break;
 	   }
 
@@ -145,6 +154,33 @@ void executeInternalCommand(char* toks[]){
   if( (command.compare("history") ) == 0){
     printQueue(history);
   }
+
+}
+
+void executeExternalCommand(char* toks[]){
+  pid_t pid, child_pid;
+  int child_status;
+
+  pid = fork();
+
+  if(pid == 0){
+    // We are the child.
+
+    // Exec and run the program specificied by user
+    // Exec documentation at:
+    // http://linux.die.net/man/3/execvp
+
+    int exec = execvp(toks[0], toks);
+
+    if(exec == -1) perror("ERROR: Execution of external command has failed. Check executeExternalCommand function.");
+
+  } else {
+    // We are the parent.
+
+    // Wait on the child process to terminate
+    waitpid(child_pid, &child_status, WUNTRACED);
+  }
+
 
 }
 
