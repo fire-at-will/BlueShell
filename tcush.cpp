@@ -172,7 +172,7 @@ void executeExternalCommand(char* toks[]){
 
     int exec = execvp(toks[0], toks);
 
-    if(exec == -1) perror("ERROR: Execution of external command has failed. Check executeExternalCommand function.");
+    if(exec == -1) perror("ERROR: Execution of external command has failed. Check for typos.");
 
   } else {
     // We are the parent.
