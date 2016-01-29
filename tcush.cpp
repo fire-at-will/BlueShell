@@ -45,7 +45,7 @@ void exitBlueShell();
 // History feature functions
 void recordCommand(char* toks[]);
 void printQueue(queue <string> queueToPrint);
-void historyCommand(char* toks[], queue <string> commandsList)
+void historyCommand(char* toks[], queue <string> commandsList);
 
 // Internal Command Execution Functions
 bool commandIsInternal(string command);
@@ -165,7 +165,7 @@ void executeInternalCommand(char* toks[]){
   } else if(command.compare("cd") == 0){
     cd(toks);
   } else if (command.compare("!") == 0) {
-    historyCall(toks[], history);
+    historyCommand(toks, history);
   }
 
 }
@@ -237,7 +237,7 @@ void printQueue(queue <string> queueToPrint){
 
 //This function executes a command from the history queue
 void historyCommand(char* toks[], queue <string> commandsList){
-  int size = queueToCallFrom.size();
+  int size = commandsList.size();
   string argument = toks[1];
 
 //execute a command from history and throw an error if the command cannot be found
