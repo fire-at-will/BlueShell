@@ -2,7 +2,7 @@
 //
 // James Stewart and Will Taylor
 // Operating Systems
-// Project #2: Writing Your Own Shell: myish
+// Project #2: Writing Your Own Shell: BlueShell
 //
 //*********************************************************
 
@@ -27,6 +27,8 @@
 #include <cstdio>
 #include <sys/types.h>
 #include <sys/wait.h>
+#include <string.h>
+#include <stdio.h>
 
 using namespace std;
 
@@ -37,6 +39,8 @@ using namespace std;
 //*********************************************************
 
 void displayPrompt();
+
+void exit_blue_shell();
 
 // History feature functions
 void recordCommand(char* toks[]);
@@ -49,6 +53,9 @@ void executeInternalCommand(char* toks[]);
 // External Command Execution Functions
 void executeExternalCommand(char* toks[]);
 
+// Other Internal Command Functions
+void displayHelp();
+void cd(char* toks[]);
 
 //*********************************************************
 //
@@ -59,8 +66,8 @@ using namespace std;
 //extern "C"
 //{
   extern char **gettoks();
-  extern const int NUMBER_OF_INTERNAL_COMMANDS = 3;
-  string INTERNAL_COMMANDS [NUMBER_OF_INTERNAL_COMMANDS] = {"history", "!"};
+  extern const int NUMBER_OF_INTERNAL_COMMANDS = 6;
+  string INTERNAL_COMMANDS [NUMBER_OF_INTERNAL_COMMANDS] = {"history", "!", "help", "quit", "exit", "cd"};
 //}
 
 //*********************************************************
@@ -102,11 +109,6 @@ int main( int argc, char *argv[] ){
       toks = gettoks();
 
       if( toks[0] != NULL ){
-	  // simple loop to echo all arguments
-	  // for( ii=0; toks[ii] != NULL; ii++ )
-	  //   {
-	  //     cout << "Argument " << ii << ": " << toks[ii] << endl;
-	  //   }
 
     if(commandIsInternal(toks[0])){
       executeInternalCommand(toks);
@@ -155,6 +157,12 @@ void executeInternalCommand(char* toks[]){
 
   if( (command.compare("history") ) == 0){
     printQueue(history);
+  } else if( (command.compare("help") ) == 0){
+    displayHelp();
+  } else if( ( (command.compare("quit")) == 0)  || ((command.compare("exit") == 0))){
+    exit_blue_shell();
+  } else if( ( (command.compare("cd") ) == 0) ){
+    cd(toks);
   }
 
 }
@@ -219,6 +227,11 @@ void printQueue(queue <string> queueToPrint){
 
 }
 
+void displayHelp(){
+  string help = "BlueShell by Will Taylor & James Stewart\nThese commands are internal to the shell.\nFor help with external commands, type 'man X' where X is the command you wish to know more about.\n\nhelp - Displays a list of internal commands with their descriptions\nexit - Terminates the BlueShell application\nquit - Terminates the BlueShell application\ncd DIRECTORY - Switches the current working directory to DIRECTORY\nhistory - Displays a list of the last 10 executed user commands\n!! - Executes the most recent command in the history\n!N - Where N is a positive integer, the Nth command in the history queue is executed\n";
+  cout << help;
+}
+
 // This function displays the prompt to the user.
 void displayPrompt(){
 
@@ -226,4 +239,30 @@ void displayPrompt(){
   struct tm * now = localtime( & t );
   cout << (now->tm_mon + 1) << '/' <<  now->tm_mday << " " << now->tm_hour << ":" << now->tm_min << "$ ";
 
+}
+
+void cd(char* toks[]){
+  // Wrapper of chdir function to implement the cd command
+
+  int status = 1024;
+
+  // Get current working directory
+  char cwd[1024];
+  getcwd(cwd, sizeof(cwd));
+
+  // Add / to the cwd
+  strcat(cwd, "/");
+  const char* directory = toks[1];
+
+  // Add new directory
+  strcat(cwd, directory);
+
+  // Change directory
+  status = chdir(cwd);
+
+  if(status != 0) perror("Directory change failed.\n");
+}
+
+void exit_blue_shell(){
+  exit(0);
 }
