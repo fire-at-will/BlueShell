@@ -45,6 +45,7 @@ void exitBlueShell();
 // History feature functions
 void recordCommand(char* toks[]);
 void printQueue(queue <string> queueToPrint);
+void historyCommand(char* toks[], queue <string> commandsList)
 
 // Internal Command Execution Functions
 bool commandIsInternal(string command);
@@ -155,14 +156,16 @@ void executeInternalCommand(char* toks[]){
 
   string command = toks[0];
 
-  if( (command.compare("history") ) == 0){
+  if(command.compare("history") == 0){
     printQueue(history);
-  } else if( (command.compare("help") ) == 0){
+  } else if(command.compare("help") == 0){
     displayHelp();
-  } else if( ( (command.compare("quit")) == 0)  || ((command.compare("exit") == 0))){
+  } else if( (command.compare("quit") == 0)  || (command.compare("exit") == 0) ){
     exitBlueShell();
-  } else if( ( (command.compare("cd") ) == 0) ){
+  } else if(command.compare("cd") == 0){
     cd(toks);
+  } else if (command.compare("!") == 0) {
+    historyCall(toks[], history);
   }
 
 }
@@ -204,6 +207,12 @@ void recordCommand(char* toks[]){
   // Combine all tokens into one string to push into history queue
   for(ii = 0; toks[ii] != NULL; ii++){
       command = command + " " + toks[ii];
+
+      //if the command is "!", properly concatenate string
+      if (command.compare(" !") == 0) {
+        command = command + toks[ii+1];
+        break;
+      }
   }
 
   // Push the command string into the front of the queue
@@ -224,8 +233,23 @@ void printQueue(queue <string> queueToPrint){
       cout << ii << item << endl;
       queueToPrint.push(item);
   }
-
 }
+
+//This function executes a command from the history queue
+void historyCommand(char* toks[], queue <string> commandsList){
+  int size = queueToCallFrom.size();
+  string argument = toks[1];
+
+//execute a command from history and throw an error if the command cannot be found
+  if (argument.compare("!") == 0) {
+    //execute most recent command
+    //error should read, "No commands in history"
+  } else {
+    //execute the Nth command
+    //error should read, "No such command in history"
+  }
+}
+
 
 void displayHelp(){
   string help = "BlueShell by Will Taylor & James Stewart\nThese commands are internal to the shell.\nFor help with external commands, type 'man X' where X is the command you wish to know more about.\n\nhelp - Displays a list of internal commands with their descriptions\nexit - Terminates the BlueShell application\nquit - Terminates the BlueShell application\ncd DIRECTORY - Switches the current working directory to DIRECTORY\nhistory - Displays a list of the last 10 executed user commands\n!! - Executes the most recent command in the history\n!N - Where N is a positive integer, the Nth command in the history queue is executed\n";
