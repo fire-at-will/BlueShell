@@ -27,6 +27,8 @@
 #include <cstdio>
 #include <sys/types.h>
 #include <sys/wait.h>
+#include <string.h>
+#include <stdio.h>
 
 using namespace std;
 
@@ -37,7 +39,6 @@ using namespace std;
 //*********************************************************
 
 void displayPrompt();
-void displayHelp();
 
 void exit_blue_shell();
 
@@ -52,6 +53,9 @@ void executeInternalCommand(char* toks[]);
 // External Command Execution Functions
 void executeExternalCommand(char* toks[]);
 
+// Other Internal Command Functions
+void displayHelp();
+void cd(char* toks[]);
 
 //*********************************************************
 //
@@ -62,8 +66,8 @@ using namespace std;
 //extern "C"
 //{
   extern char **gettoks();
-  extern const int NUMBER_OF_INTERNAL_COMMANDS = 5;
-  string INTERNAL_COMMANDS [NUMBER_OF_INTERNAL_COMMANDS] = {"history", "!", "help", "quit", "exit"};
+  extern const int NUMBER_OF_INTERNAL_COMMANDS = 6;
+  string INTERNAL_COMMANDS [NUMBER_OF_INTERNAL_COMMANDS] = {"history", "!", "help", "quit", "exit", "cd"};
 //}
 
 //*********************************************************
@@ -105,11 +109,6 @@ int main( int argc, char *argv[] ){
       toks = gettoks();
 
       if( toks[0] != NULL ){
-	  // simple loop to echo all arguments
-	  // for( ii=0; toks[ii] != NULL; ii++ )
-	  //   {
-	  //     cout << "Argument " << ii << ": " << toks[ii] << endl;
-	  //   }
 
     if(commandIsInternal(toks[0])){
       executeInternalCommand(toks);
@@ -162,6 +161,8 @@ void executeInternalCommand(char* toks[]){
     displayHelp();
   } else if( ( (command.compare("quit")) == 0)  || ((command.compare("exit") == 0))){
     exit_blue_shell();
+  } else if( ( (command.compare("cd") ) == 0) ){
+    cd(toks);
   }
 
 }
@@ -238,6 +239,28 @@ void displayPrompt(){
   struct tm * now = localtime( & t );
   cout << (now->tm_mon + 1) << '/' <<  now->tm_mday << " " << now->tm_hour << ":" << now->tm_min << "$ ";
 
+}
+
+void cd(char* toks[]){
+  // Wrapper of chdir function to implement the cd command
+
+  int status = 1024;
+
+  // Get current working directory
+  char cwd[1024];
+  getcwd(cwd, sizeof(cwd));
+
+  // Add / to the cwd
+  strcat(cwd, "/");
+  const char* directory = toks[1];
+
+  // Add new directory
+  strcat(cwd, directory);
+
+  // Change directory
+  status = chdir(cwd);
+
+  if(status != 0) perror("Directory change failed.\n");
 }
 
 void exit_blue_shell(){
