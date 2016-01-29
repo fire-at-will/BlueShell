@@ -40,7 +40,7 @@ using namespace std;
 
 void displayPrompt();
 
-void exit_blue_shell();
+void exitBlueShell();
 
 // History feature functions
 void recordCommand(char* toks[]);
@@ -160,7 +160,7 @@ void executeInternalCommand(char* toks[]){
   } else if( (command.compare("help") ) == 0){
     displayHelp();
   } else if( ( (command.compare("quit")) == 0)  || ((command.compare("exit") == 0))){
-    exit_blue_shell();
+    exitBlueShell();
   } else if( ( (command.compare("cd") ) == 0) ){
     cd(toks);
   }
