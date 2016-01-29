@@ -250,7 +250,7 @@ void cd(char* toks[]){
   char cwd[1024];
   getcwd(cwd, sizeof(cwd));
 
-  // Add / to the cwd
+  // Add '/' to the cwd
   strcat(cwd, "/");
   const char* directory = toks[1];
 
@@ -263,6 +263,6 @@ void cd(char* toks[]){
   if(status != 0) perror("Directory change failed.\n");
 }
 
-void exit_blue_shell(){
+void exitBlueShell(){
   exit(0);
 }
