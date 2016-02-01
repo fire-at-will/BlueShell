@@ -34,6 +34,42 @@ using namespace std;
 
 //*********************************************************
 //
+// Command Object
+//
+//*********************************************************
+class Command {
+  private:
+    string line;
+    char **parts; //not sure how to declare this array
+
+  public:
+    Command();
+    string getLine(void);
+    char getParts(void);
+    void setLine(string x);
+    void setParts(char* x[]);
+};
+
+Command::Command () {
+  //no code here necessary
+}
+
+string Command::getLine(void) {
+  return line;
+}
+//not sure how to return this array
+char Command::getParts(void) {
+  return parts;
+}
+void Command::setLine(string x) {
+  line = x;
+}
+void Command::setParts(char* x[]) {
+  parts = x;
+}
+
+//*********************************************************
+//
 // Function Declarations
 //
 //*********************************************************
@@ -44,8 +80,8 @@ void exitBlueShell();
 
 // History feature functions
 void recordCommand(char* toks[]);
-void printQueue(queue <string> queueToPrint);
-void historyCommand(char* toks[], queue <string> commandsList);
+void printQueue();
+void historyCommand(char* toks[]);
 
 // Internal Command Execution Functions
 bool commandIsInternal(string command);
@@ -77,10 +113,11 @@ using namespace std;
 //
 //*********************************************************
 
-queue <string> history;     // Queue to hold the command history in
+queue <Command> history;     // Queue to hold the command history in
 
 // Welcome message
 string blue_shell_ascii_art = "                                              `.\n                                          `.-/o:\n                                       ``..-:+sy`\n                                    ``..--:+oys-.\n                                 ``...-://+os++oo     ----- Blue Shell -----\n    `.           :            ``...-:::::/+o+oy/`     |                    |\n    `oo.        /o/        ``...-:::--:/oooooo+.      |By Will Taylor      |\n     +ss-`     //:+:      `..-:::--:/+oo++++oss`      |and                 |\n     :o+os:/osyhyyyhyo:` `.-://::///++//+osys:`       |James Stewart       |\n     :+/.-/shhddhhhdddhy..--//::////+oooooooo         |                    |\n  ``./so:``:yhdhhhyo:.`-.-:://://+++ooooosy+`         |--------------------|\n  `+oymhs/+hhdmdhdy-  .:-::://////++osyys:`\n    ommddddmmmhhdddy+:/o:::::///+++osysy`\n    ydhyyyyhdddhhmmmmmmdo//////++ooooos:\n `/+/:::-....--:/+osssyyhyooooooooss+:`\n soooosyss+/::----::::://///+++oyhd.\n +hyhdNMMMN/:+hdhhyysooooossssysso-                   Look out, first place.\n  -/symMMm+.-+NMMMMmh++ssyhdmm/\n    `+so+/++//odmmho//oosyhdms\n       omhyso++oo//:/ossyhdm+\n        -ydhhyyso+oosyyyhho.                         Type \"help\" for a list\n          ./syhddddhhys+:`                      of available internal commands.\n               ````` ";
+
 
 //*********************************************************
 //
@@ -111,14 +148,13 @@ int main( int argc, char *argv[] ){
 
       if( toks[0] != NULL ){
 
-    if(commandIsInternal(toks[0])){
-      executeInternalCommand(toks);
-    } else {
-      executeExternalCommand(toks);
-    }
+        if(commandIsInternal(toks[0])){
+          executeInternalCommand(toks);
+        } else {
+          executeExternalCommand(toks);
+        }
 
-	   if( !strcmp( toks[0], "quit" ))
-	    break;
+    	  if( !strcmp( toks[0], "quit" )) break;
 	   }
 
      recordCommand(toks);
@@ -157,7 +193,7 @@ void executeInternalCommand(char* toks[]){
   string command = toks[0];
 
   if(command.compare("history") == 0){
-    printQueue(history);
+    printQueue();
   } else if(command.compare("help") == 0){
     displayHelp();
   } else if( (command.compare("quit") == 0)  || (command.compare("exit") == 0) ){
@@ -165,7 +201,7 @@ void executeInternalCommand(char* toks[]){
   } else if(command.compare("cd") == 0){
     cd(toks);
   } else if (command.compare("!") == 0) {
-    historyCommand(toks, history);
+    historyCommand(toks);
   }
 
 }
@@ -200,6 +236,9 @@ void executeExternalCommand(char* toks[]){
 void recordCommand(char* toks[]){
   // This function pushes commands onto the history queue.
 
+  Command node;
+  node.setParts(toks);
+
   // Local variables
   int ii;
   string command = "";
@@ -214,39 +253,49 @@ void recordCommand(char* toks[]){
         break;
       }
   }
-
+  node.setLine(command);
   // Push the command string into the front of the queue
-  history.push(command);
+  history.push(node);
 
   // If the size of the queue is over 10, pop the last command off
   if(history.size() > 10) history.pop();
 
 }
 
-void printQueue(queue <string> queueToPrint){
-  int size = queueToPrint.size();
+void printQueue(){
+  int size = history.size();
   int ii;
 
   for(ii = size; ii != 0; ii--){
-      string item = queueToPrint.front();
-      queueToPrint.pop();
-      cout << ii << item << endl;
-      queueToPrint.push(item);
+      Command node = history.front();
+      history.pop();
+      cout << ii << node.getLine() << endl;
+      history.push(node);
   }
 }
 
 //This function executes a command from the history queue
-void historyCommand(char* toks[], queue <string> commandsList){
-  int size = commandsList.size();
+void historyCommand(char* toks[]){
+  int size = history.size();
   string argument = toks[1];
+  Command node;
+  char **temp;
 
-//execute a command from history and throw an error if the command cannot be found
+  //execute the most recent command
   if (argument.compare("!") == 0) {
-    //execute most recent command
-    //error should read, "No commands in history"
+    node = history.front();
+    temp = node.getParts(); //how to get array from object??
+
+    if(commandIsInternal(temp[0])){
+      executeInternalCommand(temp);
+    } else {
+      executeExternalCommand(temp);
+    }
   } else {
-    //execute the Nth command
-    //error should read, "No such command in history"
+  //execute the Nth command
+  int N = toks[1] - '0';
+
+  //error should read, "No such command in history"
   }
 }
 
@@ -266,7 +315,7 @@ void displayPrompt(){
 }
 
 void cd(char* toks[]){
-  // Wrapper of chdir function to implement the cd command
+  // Wrapper of chdir function to implement the cd commandx
 
   int status = 1024;
 
