@@ -19,7 +19,6 @@
 #include <signal.h>
 #include <cstdlib>
 #include <cstring>
-
 #include <queue>
 #include <ctime>
 #include <string>
@@ -29,6 +28,7 @@
 #include <sys/wait.h>
 #include <string.h>
 #include <stdio.h>
+#include <signal.h>
 
 using namespace std;
 
@@ -41,6 +41,8 @@ using namespace std;
 void displayPrompt();
 
 void exitBlueShell();
+int lengthOfTokenArray();
+void reapZombieChild(int s);
 
 // History feature functions
 void recordCommand(char* toks[]);
@@ -79,6 +81,8 @@ using namespace std;
 
 queue <string> history;     // Queue to hold the command history in
 
+char **toks;
+
 // Welcome message
 string blue_shell_ascii_art = "                                              `.\n                                          `.-/o:\n                                       ``..-:+sy`\n                                    ``..--:+oys-.\n                                 ``...-://+os++oo     ----- Blue Shell -----\n    `.           :            ``...-:::::/+o+oy/`     |                    |\n    `oo.        /o/        ``...-:::--:/oooooo+.      |By Will Taylor      |\n     +ss-`     //:+:      `..-:::--:/+oo++++oss`      |and                 |\n     :o+os:/osyhyyyhyo:` `.-://::///++//+osys:`       |James Stewart       |\n     :+/.-/shhddhhhdddhy..--//::////+oooooooo         |                    |\n  ``./so:``:yhdhhhyo:.`-.-:://://+++ooooosy+`         |--------------------|\n  `+oymhs/+hhdmdhdy-  .:-::://////++osyys:`\n    ommddddmmmhhdddy+:/o:::::///+++osysy`\n    ydhyyyyhdddhhmmmmmmdo//////++ooooos:\n `/+/:::-....--:/+osssyyhyooooooooss+:`\n soooosyss+/::----::::://///+++oyhd.\n +hyhdNMMMN/:+hdhhyysooooossssysso-                   Look out, first place.\n  -/symMMm+.-+NMMMMmh++ssyhdmm/\n    `+so+/++//odmmho//oosyhdms\n       omhyso++oo//:/ossyhdm+\n        -ydhhyyso+oosyyyhho.                         Type \"help\" for a list\n          ./syhddddhhys+:`                      of available internal commands.\n               ````` ";
 
@@ -91,13 +95,15 @@ int main( int argc, char *argv[] ){
 
   // local variables
   int ii;
-  char **toks;
   int retval;
 
   // initialize local variables
   ii = 0;
   toks = NULL;
   retval = 0;
+
+  // Register function to reap zombie processes
+  signal(SIGCHLD, reapZombieChild);
 
   // Clear terminal screen and print out welcome
   if (system("CLS")) system("clear");
@@ -174,10 +180,25 @@ void executeExternalCommand(char* toks[]){
   pid_t pid, child_pid;
   int child_status;
 
+  // Check to see if we need to let the child run in the background or not
+  int length = lengthOfTokenArray();
+  string lastTok = toks[length - 1];
+  bool programShouldRunInBackground = (lastTok.compare("&") == 0);
+  if(programShouldRunInBackground){
+    // Remove the & at the end of the tok array
+    toks[length - 1] = NULL;
+  }
+
   pid = fork();
 
   if(pid == 0){
     // We are the child.
+
+    if(programShouldRunInBackground){
+      setpgid(0, 0);
+      //fclose(stdin);    // Close their input
+      //fopen("/dev/null", "r");  // Never read anything in
+    }
 
     // Exec and run the program specificied by user
     // Exec documentation at:
@@ -190,10 +211,16 @@ void executeExternalCommand(char* toks[]){
   } else {
     // We are the parent.
 
-    // Wait on the child process to terminate
-    do {
-        child_pid = waitpid(child_pid, &child_status, WUNTRACED);
-    } while (!WIFEXITED(child_status) && !WIFSIGNALED(child_status));
+    if(!programShouldRunInBackground){
+      // Run in foreground
+      // Wait on the child process to terminate
+      do {
+          child_pid = waitpid(child_pid, &child_status, WUNTRACED);
+      } while (!WIFEXITED(child_status) && !WIFSIGNALED(child_status));
+    } else {
+      cout << "Child PID: " << pid << "\n";
+    }
+
   }
 }
 
@@ -285,6 +312,21 @@ void cd(char* toks[]){
   status = chdir(cwd);
 
   if(status != 0) perror("Directory change failed.\n");
+}
+
+int lengthOfTokenArray(){
+
+  int ii;
+  for( ii=0; toks[ii] != NULL; ii++ )
+    {
+      // We're just looping here...what a silly way to do this
+    }
+
+  return ii;
+}
+
+void reapZombieChild(int s){
+  while (waitpid((pid_t)(-1), 0, WNOHANG) > 0) {}
 }
 
 void exitBlueShell(){
