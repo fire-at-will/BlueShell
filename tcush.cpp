@@ -29,6 +29,8 @@
 #include <string.h>
 #include <stdio.h>
 #include <signal.h>
+#include <fstream>
+#include <sys/stat.h>
 
 using namespace std;
 
@@ -42,6 +44,9 @@ void displayPrompt();
 
 void exitBlueShell();
 int lengthOfTokenArray();
+
+// Signal Handlers
+void alarmHandler(int s);
 void reapZombieChild(int s);
 
 // History feature functions
@@ -52,6 +57,7 @@ void historyCommand(char* toks[], queue <string> commandsList);
 // Internal Command Execution Functions
 bool commandIsInternal(string command);
 void executeInternalCommand(char* toks[]);
+void setAlarm(char* toks[]);
 
 // External Command Execution Functions
 void executeExternalCommand(char* toks[]);
@@ -69,8 +75,8 @@ using namespace std;
 //extern "C"
 //{
   extern char **gettoks();
-  extern const int NUMBER_OF_INTERNAL_COMMANDS = 6;
-  string INTERNAL_COMMANDS [NUMBER_OF_INTERNAL_COMMANDS] = {"history", "!", "help", "quit", "exit", "cd"};
+  extern const int NUMBER_OF_INTERNAL_COMMANDS = 7;
+  string INTERNAL_COMMANDS [NUMBER_OF_INTERNAL_COMMANDS] = {"history", "!", "help", "quit", "exit", "cd", "alarm"};
 //}
 
 //*********************************************************
@@ -80,6 +86,7 @@ using namespace std;
 //*********************************************************
 
 queue <string> history;     // Queue to hold the command history in
+string alarmMessage = "";   // String to hold the alarm message
 
 char **toks;
 
@@ -102,14 +109,14 @@ int main( int argc, char *argv[] ){
   toks = NULL;
   retval = 0;
 
-  // Register function to reap zombie processes
+  // Register signal handlers
   signal(SIGCHLD, reapZombieChild);
+  signal(SIGALRM, alarmHandler);
 
   // Clear terminal screen and print out welcome
   if (system("CLS")) system("clear");
   cout << blue_shell_ascii_art << endl;
 
-  // main (infinite) loop
   while( true ){
       // get arguments
       displayPrompt();
@@ -172,6 +179,8 @@ void executeInternalCommand(char* toks[]){
     cd(toks);
   } else if (command.compare("!") == 0) {
     historyCommand(toks, history);
+  } else if (command.compare("alarm") == 0) {
+    setAlarm(toks);
   }
 
 }
@@ -279,17 +288,16 @@ void historyCommand(char* toks[], queue <string> commandsList){
 
 
 void displayHelp(){
-  string help = "BlueShell by Will Taylor & James Stewart\nThese commands are internal to the shell.\nFor help with external commands, type 'man X' where X is the command you wish to know more about.\n\nhelp - Displays a list of internal commands with their descriptions\nexit - Terminates the BlueShell application\nquit - Terminates the BlueShell application\ncd DIRECTORY - Switches the current working directory to DIRECTORY\nhistory - Displays a list of the last 10 executed user commands\n!! - Executes the most recent command in the history\n!N - Where N is a positive integer, the Nth command in the history queue is executed\n";
+  string help = "BlueShell by Will Taylor & James Stewart\nThese commands are internal to the shell.\n\nhelp - Displays a list of internal commands with their descriptions\nexit - Terminates the BlueShell application\nquit - Terminates the BlueShell application\ncd DIRECTORY - Switches the current working directory to DIRECTORY\nhistory - Displays a list of the last 10 executed user commands\n!! - Executes the most recent command in the history\n!N - Where N is a positive integer, the Nth command in the history queue is executed\nalarm N - Where in is a positive integer, it sets an alarm that will go off in N seconds. Only one alarm can be set at once. If N=0, then any previously set alarm will be canceled.\n";
   cout << help;
 }
 
 // This function displays the prompt to the user.
 void displayPrompt(){
-
   time_t t = time(0);   // get time
   struct tm * now = localtime( & t );
   cout << (now->tm_mon + 1) << '/' <<  now->tm_mday << " " << now->tm_hour << ":" << now->tm_min << "$ ";
-
+  std::cout.flush();
 }
 
 void cd(char* toks[]){
@@ -327,6 +335,36 @@ int lengthOfTokenArray(){
 
 void reapZombieChild(int s){
   while (waitpid((pid_t)(-1), 0, WNOHANG) > 0) {}
+}
+
+void alarmHandler(int s){
+  cout << "BEEP BEEP! Your alarm is going off.\n";
+  displayPrompt();
+}
+
+void setAlarm(char* toks[]){
+  int seconds = atoi(toks[1]);
+
+  if(seconds < 0){
+    perror("Error: Number of seconds must be greater than or equal to 0.\n");
+    return;
+  }
+
+  int status = alarm(seconds);
+
+  if(seconds == 0){
+    cout << "Canceled any previously set alarms.\n";
+    return;
+  }
+
+  if(status != 0){
+    // Check to make sure there isn't already an alarm set
+    cout << "Error: Failed to set alarm due to another scheduled alarm. To cancel the currently alarm that will go off in " << status << " seconds, please use the command $alarm 0.\n";
+  } else {
+    cout << "Alarm set to go off in " << seconds << ".\n";
+  }
+
+
 }
 
 void exitBlueShell(){
