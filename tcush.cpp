@@ -88,9 +88,9 @@ using namespace std;
 //*********************************************************
 
 queue <string> history;     // Queue to hold the command history in
-string alarmMessage = "";   // String to hold the alarm message
-
 char **toks;
+char **command1;
+char **command2;
 
 // Welcome message
 string blue_shell_ascii_art = "                                              `.\n                                          `.-/o:\n                                       ``..-:+sy`\n                                    ``..--:+oys-.\n                                 ``...-://+os++oo     ----- Blue Shell -----\n    `.           :            ``...-:::::/+o+oy/`     |                    |\n    `oo.        /o/        ``...-:::--:/oooooo+.      |By Will Taylor      |\n     +ss-`     //:+:      `..-:::--:/+oo++++oss`      |and                 |\n     :o+os:/osyhyyyhyo:` `.-://::///++//+osys:`       |James Stewart       |\n     :+/.-/shhddhhhdddhy..--//::////+oooooooo         |                    |\n  ``./so:``:yhdhhhyo:.`-.-:://://+++ooooosy+`         |--------------------|\n  `+oymhs/+hhdmdhdy-  .:-::://////++osyys:`\n    ommddddmmmhhdddy+:/o:::::///+++osysy`\n    ydhyyyyhdddhhmmmmmmdo//////++ooooos:\n `/+/:::-....--:/+osssyyhyooooooooss+:`\n soooosyss+/::----::::://///+++oyhd.\n +hyhdNMMMN/:+hdhhyysooooossssysso-                   Look out, first place.\n  -/symMMm+.-+NMMMMmh++ssyhdmm/\n    `+so+/++//odmmho//oosyhdms\n       omhyso++oo//:/ossyhdm+\n        -ydhhyyso+oosyyyhho.                         Type \"help\" for a list\n          ./syhddddhhys+:`                      of available internal commands.\n               ````` ";
@@ -137,6 +137,7 @@ int main( int argc, char *argv[] ){
 	   }
 
      recordCommand(toks);
+
     }
 
   // return to calling environment
@@ -200,6 +201,26 @@ void executeExternalCommand(char* toks[]){
     toks[length - 1] = NULL;
   }
 
+  // Determine if we need to do any piping.
+  bool needPiping = false;
+  int pipingCharAt = -1;
+  for(int ii=0; toks[ii] != NULL; ii++ ){
+      string command = toks[ii];
+
+      if(command.compare("|") == 0){
+        needPiping = true;
+        pipingCharAt = ii;
+      }
+  }
+
+  int pipefd[2];
+  if(needPiping){
+    // Make a pipe.
+    // file descripters go in pipefd[0] & pipefd[1]
+    pipe(pipefd);
+
+  }
+
   pid = fork();
 
   if(pid == 0){
@@ -209,10 +230,18 @@ void executeExternalCommand(char* toks[]){
       setpgid(0, 0);
     }
 
+    // Pipe handling
+    if(needPiping){
+      // Child handles second part of the command
+      dup2(pipefd[0], 0);  // Replace stdin with input side of pipe
+      close(pipefd[1]);    // Close output side of pipe
+    }
+
     // I/O Redirection
     // Check for I/O redirection
 
     bool changedIO = false;
+
 
     int ii;
     for( ii=0; toks[ii] != NULL; ii++ ){
@@ -253,6 +282,16 @@ void executeExternalCommand(char* toks[]){
 
   } else {
     // We are the parent.
+
+    if(needPiping){
+      // Parent handles first part of command
+
+      // Replace stdout with output on the pipe
+      dup2(pipefd[1], 1);
+
+      // Close input part of pipe
+      close(pipefd[0]);
+    }
 
     if(!programShouldRunInBackground){
       // Run in foreground
