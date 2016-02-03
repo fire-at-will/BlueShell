@@ -9,14 +9,14 @@
 CC = gcc
 CPP = g++
 CCOPTS =
-CPPOPTS = 
+CPPOPTS =
 LEX = flex
-LIBS = -lfl
+LIBS = -ll		#lfl on linux
 RM = /bin/rm
 RMOPTS = -f
 
 tcush: tcush.yy.o tcush.o
-	$(CPP) $(CPPOPTS) tcush.o tcush.yy.o -o tcush -lfl
+	$(CPP) $(CPPOPTS) tcush.o tcush.yy.o -o tcush -ll
 
 tcush.o: tcush.cpp
 	 $(CPP) $(CPPOPTS) -c tcush.cpp
@@ -29,6 +29,3 @@ tcush.yy.c: tcush.l
 
 clean:
 	$(RM) $(RMOPTS) *.o *~ core tcush tcush.yy.c
-
-
-
