@@ -31,8 +31,44 @@
 #include <signal.h>
 #include <fstream>
 #include <sys/stat.h>
+#include <fcntl.h>
 
 using namespace std;
+
+//*********************************************************
+//
+// Command Object
+//
+//*********************************************************
+class Command {
+  private:
+    string line;
+    char** parts = (char**) malloc(128 * sizeof(char*));
+
+  public:
+    Command();
+    string getLine(void);
+    char** getParts(void);
+    void setLine(string x);
+    void setParts(char* x[]);
+};
+
+Command::Command () {
+  //no code here necessary
+}
+
+string Command::getLine(void) {
+  return line;
+}
+char** Command::getParts(void) {
+  return parts;
+}
+void Command::setLine(string x) {
+  line = x;
+}
+void Command::setParts(char* x[]) {
+  parts = x;
+}
 
 //*********************************************************
 //
@@ -44,6 +80,7 @@ void displayPrompt();
 
 void exitBlueShell();
 int lengthOfTokenArray();
+void fixTokArray();
 
 // Signal Handlers
 void alarmHandler(int s);
@@ -51,8 +88,8 @@ void reapZombieChild(int s);
 
 // History feature functions
 void recordCommand(char* toks[]);
-void printQueue(queue <string> queueToPrint);
-void historyCommand(char* toks[], queue <string> commandsList);
+void printQueue();
+void historyCommand(char* toks[]);
 
 // Internal Command Execution Functions
 bool commandIsInternal(string command);
@@ -85,7 +122,7 @@ using namespace std;
 //
 //*********************************************************
 
-queue <string> history;     // Queue to hold the command history in
+queue <Command> history;     // Queue to hold the command history in
 string alarmMessage = "";   // String to hold the alarm message
 
 char **toks;
@@ -170,7 +207,7 @@ void executeInternalCommand(char* toks[]){
   string command = toks[0];
 
   if(command.compare("history") == 0){
-    printQueue(history);
+    printQueue();
   } else if(command.compare("help") == 0){
     displayHelp();
   } else if( (command.compare("quit") == 0)  || (command.compare("exit") == 0) ){
@@ -178,7 +215,7 @@ void executeInternalCommand(char* toks[]){
   } else if(command.compare("cd") == 0){
     cd(toks);
   } else if (command.compare("!") == 0) {
-    historyCommand(toks, history);
+    historyCommand(toks);
   } else if (command.compare("alarm") == 0) {
     setAlarm(toks);
   }
@@ -205,10 +242,42 @@ void executeExternalCommand(char* toks[]){
 
     if(programShouldRunInBackground){
       setpgid(0, 0);
-      //fclose(stdin);    // Close their input
-      //fopen("/dev/null", "r");  // Never read anything in
     }
 
+    // I/O Redirection
+    // Check for I/O redirection
+
+    bool changedIO = false;
+
+    int ii;
+    for( ii=0; toks[ii] != NULL; ii++ ){
+        string command = toks[ii];
+
+        if(command.compare(">") == 0){
+          // Redirect output
+          int out = open(toks[ii + 1], O_WRONLY | O_TRUNC | O_CREAT, S_IRUSR | S_IRGRP | S_IWGRP | S_IWUSR);
+
+          dup2(out, 1);     // Stdout
+          close(out);
+
+          changedIO = true;
+
+        }
+
+        if(command.compare("<") == 0){
+          // Redirect input
+          int in = open(toks[ii + 1], O_RDONLY);
+
+          dup2(in, 0);     // Stdin
+          close(in);
+
+          changedIO = true;
+        }
+    }
+
+    if(changedIO){
+      fixTokArray();
+    }
     // Exec and run the program specificied by user
     // Exec documentation at:
     // http://linux.die.net/man/3/execvp
@@ -239,6 +308,7 @@ void recordCommand(char* toks[]){
   // Local variables
   int ii;
   string command = "";
+  char** temp = (char**) malloc(128 * sizeof(char*));
 
   // Combine all tokens into one string to push into history queue
   for(ii = 0; toks[ii] != NULL; ii++){
@@ -250,41 +320,106 @@ void recordCommand(char* toks[]){
         break;
       }
   }
-
+  //Create the Command object
+  Command node;
+  node.setLine(command);
+  std::copy(toks, toks+128, temp);
+  node.setParts(temp);
   // Push the command string into the front of the queue
-  history.push(command);
+  history.push(node);
 
   // If the size of the queue is over 10, pop the last command off
   if(history.size() > 10) history.pop();
 
 }
 
-void printQueue(queue <string> queueToPrint){
-  int size = queueToPrint.size();
+void printQueue(){
+  int size = history.size();
   int ii;
 
   for(ii = size; ii != 0; ii--){
-      string item = queueToPrint.front();
-      queueToPrint.pop();
-      cout << ii << item << endl;
-      queueToPrint.push(item);
+      Command node = history.front();
+      history.pop();
+      cout << ii << node.getLine() << endl;
+      history.push(node);
   }
 }
 
 //This function executes a command from the history queue
-void historyCommand(char* toks[], queue <string> commandsList){
-  int size = commandsList.size();
+void historyCommand(char* toks[]){
+  int size = history.size();
   string argument = toks[1];
+  Command node;
+  char **temp;
 
-//execute a command from history and throw an error if the command cannot be found
+  //execute the most recent command
   if (argument.compare("!") == 0) {
-    //execute most recent command
-    //error should read, "No commands in history"
-  } else {
-    //execute the Nth command
-    //error should read, "No such command in history"
+    if (history.size() != 0) { //if there is history
+      node = history.back();
+      string comp = (node.getParts())[0]; //string used for comparison
+      if(comp.compare("!") != 0) { //if previous command is not "!!" or "!X"
+        temp = node.getParts();
+
+        //pass the command
+        if(commandIsInternal(temp[0])){
+          executeInternalCommand(temp);
+        } else {
+          executeExternalCommand(temp);
+        }
+      }
+      else { //previous command is !!
+        cout << "The previous command is \"!!\" or \"!X\"" << endl;
+      }
+    }
+    else { //there is no history
+      cout << "There is no commands in history." << endl;
+    }
   }
-}
+  else {
+    //execute the Nth command
+
+    //get the X from !X
+    string convert = toks[1];
+    int n = atoi(convert.c_str());
+
+    //test if the history queue is even as long as the int
+    if (n < history.size()) {
+
+      //loop through queue by popping and pushing and grab Nth command
+      int size = history.size();
+      int ii;
+      for(ii = 0; ii < size; ii++){
+        Command xx = history.front();
+        history.pop();
+        history.push(xx);
+        if (n == (size-ii)) {
+          node = xx;
+        }
+      } //end for loop
+
+      temp = node.getParts();
+      string comp = temp[0];
+
+      if (comp.compare("!") == 0) {
+        cout << "The command you are asking for is \"!!\" or \"!X\"" << endl;
+      }
+      else{
+
+        //pass the command
+        if(commandIsInternal(temp[0])){
+          executeInternalCommand(temp);
+        }
+        else {
+          executeExternalCommand(temp);
+        }
+      }
+    }
+    else {
+      //Command does not exist
+      cout << "No such command in history" << endl;
+    }
+  } //end else
+} //end historyCommand()
 
 
 void displayHelp(){
@@ -383,8 +518,44 @@ void setAlarm(char* toks[]){
   } else {
     cout << "Alarm set to go off in " << seconds << " seconds.\n";
   }
+}
 
+void fixTokArray(){
 
+  // Any time we find < or > in the token array, delete it and
+  // the proceeding token, then shift the rest of the array to
+  // the left 2 to fill in the gaps
+
+  bool solved = false;
+
+  while(!solved){
+    int ii;
+
+    for( ii=0; toks[ii] != NULL; ii++ ){
+
+        if( !strcmp(toks[ii], ">") || !strcmp(toks[ii], "<")){
+          int length = lengthOfTokenArray();
+          std::copy( (toks + ii + 2), (toks + length), (toks + ii) );
+
+          toks[length - 1] = NULL;
+          toks[length - 2] = NULL;
+        }
+
+    }
+
+    bool foundOne = false;
+    for( ii=0; toks[ii] != NULL; ii++ ){
+        if( !strcmp(toks[ii], ">") || !strcmp(toks[ii], "<")){
+          foundOne = true;
+        }
+    }
+
+    if(foundOne){
+      solved = false;
+    } else {
+      solved = true;
+    }
+  }
 }
 
 void exitBlueShell(){
