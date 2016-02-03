@@ -43,7 +43,7 @@ using namespace std;
 class Command {
   private:
     string line;
-    char **parts; //not sure how to declare this array
+    char** parts = (char**) malloc(128 * sizeof(char*));
 
   public:
     Command();
@@ -186,11 +186,6 @@ bool commandIsInternal(string command){
   // true, else returns false.
 
   int ii = 0;
-
-  // If the command exists in the array of internal commands, return true.
-  // bool exists =  std::find(INTERNAL_COMMANDS.begin(), INTERNAL_COMMANDS.end(), command) != INTERNAL_COMMANDS.end();
-  // cout << exists
-  // return exists
 
   for(ii; ii < NUMBER_OF_INTERNAL_COMMANDS; ii++){
 
