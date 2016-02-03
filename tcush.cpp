@@ -288,7 +288,14 @@ void historyCommand(char* toks[], queue <string> commandsList){
 
 
 void displayHelp(){
-  string help = "BlueShell by Will Taylor & James Stewart\nThese commands are internal to the shell.\n\nhelp - Displays a list of internal commands with their descriptions\nexit - Terminates the BlueShell application\nquit - Terminates the BlueShell application\ncd DIRECTORY - Switches the current working directory to DIRECTORY\nhistory - Displays a list of the last 10 executed user commands\n!! - Executes the most recent command in the history\n!N - Where N is a positive integer, the Nth command in the history queue is executed\nalarm N - Where in is a positive integer, it sets an alarm that will go off in N seconds. Only one alarm can be set at once. If N=0, then any previously set alarm will be canceled.\n";
+
+  int length = lengthOfTokenArray();
+  if(length != 1){
+    cout << "Usage: $help\n";
+    return;
+  }
+
+  string help = "BlueShell by Will Taylor & James Stewart\nThese commands are internal to the shell.\n\nhelp - Displays a list of internal commands with their descriptions\nexit - Terminates the BlueShell application\nquit - Terminates the BlueShell application\ncd DIRECTORY - Switches the current working directory to DIRECTORY\nhistory - Displays a list of the last 10 executed user commands\n!! - Executes the most recent command in the history\n!N - Where N is a positive integer, the Nth command in the history queue is executed\nalarm N - Where in is a positive integer, it sets an alarm that will go off in N seconds. Only one alarm can be set at once. If N=0, then any previously set alarm will be canceled.\n\n";
   cout << help;
 }
 
@@ -302,6 +309,12 @@ void displayPrompt(){
 
 void cd(char* toks[]){
   // Wrapper of chdir function to implement the cd command
+
+  int length = lengthOfTokenArray();
+  if(length != 2){
+    cout << "Usage: $cd dir, where dir is a string representing a relative directory.\n";
+    return;
+  }
 
   int status = 1024;
 
@@ -343,6 +356,13 @@ void alarmHandler(int s){
 }
 
 void setAlarm(char* toks[]){
+
+  int length = lengthOfTokenArray();
+  if(length != 2){
+    perror("Usage: $alarm N, where N is an integer >= 0.");
+    return;
+  }
+
   int seconds = atoi(toks[1]);
 
   if(seconds < 0){
@@ -361,7 +381,7 @@ void setAlarm(char* toks[]){
     // Check to make sure there isn't already an alarm set
     cout << "Error: Failed to set alarm due to another scheduled alarm. To cancel the currently alarm that will go off in " << status << " seconds, please use the command $alarm 0.\n";
   } else {
-    cout << "Alarm set to go off in " << seconds << ".\n";
+    cout << "Alarm set to go off in " << seconds << " seconds.\n";
   }
 
 
