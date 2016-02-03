@@ -31,6 +31,7 @@
 #include <signal.h>
 #include <fstream>
 #include <sys/stat.h>
+#include <fcntl.h>
 
 using namespace std;
 
@@ -44,6 +45,7 @@ void displayPrompt();
 
 void exitBlueShell();
 int lengthOfTokenArray();
+void fixTokArray();
 
 // Signal Handlers
 void alarmHandler(int s);
@@ -205,10 +207,42 @@ void executeExternalCommand(char* toks[]){
 
     if(programShouldRunInBackground){
       setpgid(0, 0);
-      //fclose(stdin);    // Close their input
-      //fopen("/dev/null", "r");  // Never read anything in
     }
 
+    // I/O Redirection
+    // Check for I/O redirection
+
+    bool changedIO = false;
+
+    int ii;
+    for( ii=0; toks[ii] != NULL; ii++ ){
+        string command = toks[ii];
+
+        if(command.compare(">") == 0){
+          // Redirect output
+          int out = open(toks[ii + 1], O_WRONLY | O_TRUNC | O_CREAT, S_IRUSR | S_IRGRP | S_IWGRP | S_IWUSR);
+
+          dup2(out, 1);     // Stdout
+          close(out);
+
+          changedIO = true;
+
+        }
+
+        if(command.compare("<") == 0){
+          // Redirect input
+          int in = open(toks[ii + 1], O_RDONLY);
+
+          dup2(in, 0);     // Stdin
+          close(in);
+
+          changedIO = true;
+        }
+    }
+
+    if(changedIO){
+      fixTokArray();
+    }
     // Exec and run the program specificied by user
     // Exec documentation at:
     // http://linux.die.net/man/3/execvp
@@ -325,12 +359,13 @@ void cd(char* toks[]){
 int lengthOfTokenArray(){
 
   int ii;
+  int answer = 0;
   for( ii=0; toks[ii] != NULL; ii++ )
     {
-      // We're just looping here...what a silly way to do this
+      answer = answer + 1;
     }
 
-  return ii;
+  return answer;
 }
 
 void reapZombieChild(int s){
@@ -364,7 +399,44 @@ void setAlarm(char* toks[]){
     cout << "Alarm set to go off in " << seconds << ".\n";
   }
 
+}
 
+void fixTokArray(){
+
+  // Any time we find < or > in the token array, delete it and
+  // the proceeding token, then shift the rest of the array to
+  // the left 2 to fill in the gaps
+
+  bool solved = false;
+
+  while(!solved){
+    int ii;
+
+    for( ii=0; toks[ii] != NULL; ii++ ){
+
+        if( !strcmp(toks[ii], ">") || !strcmp(toks[ii], "<")){
+          int length = lengthOfTokenArray();
+          std::copy( (toks + ii + 2), (toks + length), (toks + ii) );
+
+          toks[length - 1] = NULL;
+          toks[length - 2] = NULL;
+        }
+
+    }
+
+    bool foundOne = false;
+    for( ii=0; toks[ii] != NULL; ii++ ){
+        if( !strcmp(toks[ii], ">") || !strcmp(toks[ii], "<")){
+          foundOne = true;
+        }
+    }
+
+    if(foundOne){
+      solved = false;
+    } else {
+      solved = true;
+    }
+  }
 }
 
 void exitBlueShell(){
