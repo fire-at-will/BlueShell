@@ -48,7 +48,7 @@ class Command {
   public:
     Command();
     string getLine(void);
-    char getParts(void);
+    char** getParts(void);
     void setLine(string x);
     void setParts(char* x[]);
 };
@@ -61,7 +61,7 @@ string Command::getLine(void) {
   return line;
 }
 //not sure how to return this array
-char Command::getParts(void) {
+char** Command::getParts(void) {
   return parts;
 }
 void Command::setLine(string x) {
@@ -123,11 +123,10 @@ using namespace std;
 //
 //*********************************************************
 
-queue <string> history;     // Queue to hold the command history in
+queue <Command> history;     // Queue to hold the command history in
 char **toks;
 char **command1;
 char **command2;
-queue <Command> history;     // Queue to hold the command history in
 
 // Welcome message
 string blue_shell_ascii_art = "                                              `.\n                                          `.-/o:\n                                       ``..-:+sy`\n                                    ``..--:+oys-.\n                                 ``...-://+os++oo     ----- Blue Shell -----\n    `.           :            ``...-:::::/+o+oy/`     |                    |\n    `oo.        /o/        ``...-:::--:/oooooo+.      |By Will Taylor      |\n     +ss-`     //:+:      `..-:::--:/+oo++++oss`      |and                 |\n     :o+os:/osyhyyyhyo:` `.-://::///++//+osys:`       |James Stewart       |\n     :+/.-/shhddhhhdddhy..--//::////+oooooooo         |                    |\n  ``./so:``:yhdhhhyo:.`-.-:://://+++ooooosy+`         |--------------------|\n  `+oymhs/+hhdmdhdy-  .:-::://////++osyys:`\n    ommddddmmmhhdddy+:/o:::::///+++osysy`\n    ydhyyyyhdddhhmmmmmmdo//////++ooooos:\n `/+/:::-....--:/+osssyyhyooooooooss+:`\n soooosyss+/::----::::://///+++oyhd.\n +hyhdNMMMN/:+hdhhyysooooossssysso-                   Look out, first place.\n  -/symMMm+.-+NMMMMmh++ssyhdmm/\n    `+so+/++//odmmho//oosyhdms\n       omhyso++oo//:/ossyhdm+\n        -ydhhyyso+oosyyyhho.                         Type \"help\" for a list\n          ./syhddddhhys+:`                      of available internal commands.\n               ````` ";
@@ -218,7 +217,6 @@ void executeInternalCommand(char* toks[]){
     cd(toks);
   } else if (command.compare("!") == 0) {
     historyCommand(toks);
-    historyCommand(toks, history);
   } else if (command.compare("alarm") == 0) {
     setAlarm(toks);
   }
@@ -346,12 +344,10 @@ void executeExternalCommand(char* toks[]){
 void recordCommand(char* toks[]){
   // This function pushes commands onto the history queue.
 
-  Command node;
-  node.setParts(toks);
-
   // Local variables
   int ii;
   string command = "";
+  char** temp = (char**) malloc(128 * sizeof(char*));
 
   // Combine all tokens into one string to push into history queue
   for(ii = 0; toks[ii] != NULL; ii++){
@@ -363,8 +359,11 @@ void recordCommand(char* toks[]){
         break;
       }
   }
+  //Create the Command object
+  Command node;
   node.setLine(command);
-  // Push the command string into the front of the queue
+  std::copy(toks, toks+128, temp);
+  node.setParts(temp);
   history.push(node);
 
   // If the size of the queue is over 10, pop the last command off
@@ -393,21 +392,72 @@ void historyCommand(char* toks[]){
 
   //execute the most recent command
   if (argument.compare("!") == 0) {
-    node = history.front();
-    temp = node.getParts(); //how to get array from object??
+    if (history.size() != 0) { //if there is history
+      node = history.back();
+      string comp = (node.getParts())[0]; //string used for comparison
+      if(comp.compare("!") != 0) { //if previous command is not "!!" or "!X"
+        temp = node.getParts();
 
-    if(commandIsInternal(temp[0])){
-      executeInternalCommand(temp);
-    } else {
-      executeExternalCommand(temp);
+        //pass the command
+        if(commandIsInternal(temp[0])){
+          executeInternalCommand(temp);
+        } else {
+          executeExternalCommand(temp);
+        }
+      }
+      else { //previous command is !!
+        cout << "The previous command is \"!!\" or \"!X\"" << endl;
+      }
     }
-  } else {
-  //execute the Nth command
-  int N = toks[1] - '0';
-
-  //error should read, "No such command in history"
+    else { //there is no history
+      cout << "There is no commands in history." << endl;
+    }
   }
-}
+  else {
+    //execute the Nth command
+
+    //get the X from !X
+    string convert = toks[1];
+    int n = atoi(convert.c_str());
+
+    //test if the history queue is even as long as the int
+    if (n < history.size()) {
+
+      //loop through queue by popping and pushing and grab Nth command
+      int size = history.size();
+      int ii;
+      for(ii = 0; ii < size; ii++){
+        Command xx = history.front();
+        history.pop();
+        history.push(xx);
+        if (n == (size-ii)) {
+          node = xx;
+        }
+      } //end for loop
+
+      temp = node.getParts();
+      string comp = temp[0];
+
+      if (comp.compare("!") == 0) {
+        cout << "The command you are asking for is \"!!\" or \"!X\"" << endl;
+      }
+      else{
+
+        //pass the command
+        if(commandIsInternal(temp[0])){
+          executeInternalCommand(temp);
+        }
+        else {
+          executeExternalCommand(temp);
+        }
+      }
+    }
+    else {
+      //Command does not exist
+      cout << "No such command in history" << endl;
+    }
+  } //end else
+} //end historyCommand()
 
 
 void displayHelp(){
