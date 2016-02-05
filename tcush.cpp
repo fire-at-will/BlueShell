@@ -60,6 +60,7 @@ Command::Command () {
 string Command::getLine(void) {
   return line;
 }
+//not sure how to return this array
 char** Command::getParts(void) {
   return parts;
 }
@@ -79,8 +80,8 @@ void Command::setParts(char* x[]) {
 void displayPrompt();
 
 void exitBlueShell();
-int lengthOfTokenArray();
-void fixTokArray();
+int lengthOfTokenArray(char* toks[]);
+char* fixTokArray(char* toks[]);
 
 // Signal Handlers
 void alarmHandler(int s);
@@ -100,7 +101,7 @@ void setAlarm(char* toks[]);
 void executeExternalCommand(char* toks[]);
 
 // Other Internal Command Functions
-void displayHelp();
+void displayHelp(char* toks[]);
 void cd(char* toks[]);
 
 //*********************************************************
@@ -123,9 +124,8 @@ using namespace std;
 //*********************************************************
 
 queue <Command> history;     // Queue to hold the command history in
-string alarmMessage = "";   // String to hold the alarm message
-
-char **toks;
+char **command1;
+char **command2;
 
 // Welcome message
 string blue_shell_ascii_art = "                                              `.\n                                          `.-/o:\n                                       ``..-:+sy`\n                                    ``..--:+oys-.\n                                 ``...-://+os++oo     ----- Blue Shell -----\n    `.           :            ``...-:::::/+o+oy/`     |                    |\n    `oo.        /o/        ``...-:::--:/oooooo+.      |By Will Taylor      |\n     +ss-`     //:+:      `..-:::--:/+oo++++oss`      |and                 |\n     :o+os:/osyhyyyhyo:` `.-://::///++//+osys:`       |James Stewart       |\n     :+/.-/shhddhhhdddhy..--//::////+oooooooo         |                    |\n  ``./so:``:yhdhhhyo:.`-.-:://://+++ooooosy+`         |--------------------|\n  `+oymhs/+hhdmdhdy-  .:-::://////++osyys:`\n    ommddddmmmhhdddy+:/o:::::///+++osysy`\n    ydhyyyyhdddhhmmmmmmdo//////++ooooos:\n `/+/:::-....--:/+osssyyhyooooooooss+:`\n soooosyss+/::----::::://///+++oyhd.\n +hyhdNMMMN/:+hdhhyysooooossssysso-                   Look out, first place.\n  -/symMMm+.-+NMMMMmh++ssyhdmm/\n    `+so+/++//odmmho//oosyhdms\n       omhyso++oo//:/ossyhdm+\n        -ydhhyyso+oosyyyhho.                         Type \"help\" for a list\n          ./syhddddhhys+:`                      of available internal commands.\n               ````` ";
@@ -136,6 +136,8 @@ string blue_shell_ascii_art = "                                              `.\
 //
 //*********************************************************
 int main( int argc, char *argv[] ){
+
+  char **toks;
 
   // local variables
   int ii;
@@ -161,14 +163,13 @@ int main( int argc, char *argv[] ){
 
       if( toks[0] != NULL ){
 
-    if(commandIsInternal(toks[0])){
-      executeInternalCommand(toks);
-    } else {
-      executeExternalCommand(toks);
-    }
+        if(commandIsInternal(toks[0])){
+          executeInternalCommand(toks);
+        } else {
+          executeExternalCommand(toks);
+        }
 
-	   if( !strcmp( toks[0], "quit" ))
-	    break;
+    	  if( !strcmp( toks[0], "quit" )) break;
 	   }
 
      recordCommand(toks);
@@ -185,11 +186,6 @@ bool commandIsInternal(string command){
   // true, else returns false.
 
   int ii = 0;
-
-  // If the command exists in the array of internal commands, return true.
-  // bool exists =  std::find(INTERNAL_COMMANDS.begin(), INTERNAL_COMMANDS.end(), command) != INTERNAL_COMMANDS.end();
-  // cout << exists
-  // return exists
 
   for(ii; ii < NUMBER_OF_INTERNAL_COMMANDS; ii++){
 
@@ -209,7 +205,7 @@ void executeInternalCommand(char* toks[]){
   if(command.compare("history") == 0){
     printQueue();
   } else if(command.compare("help") == 0){
-    displayHelp();
+    displayHelp(toks);
   } else if( (command.compare("quit") == 0)  || (command.compare("exit") == 0) ){
     exitBlueShell();
   } else if(command.compare("cd") == 0){
@@ -227,8 +223,10 @@ void executeExternalCommand(char* toks[]){
   int child_status;
 
   // Check to see if we need to let the child run in the background or not
-  int length = lengthOfTokenArray();
+  int length = lengthOfTokenArray(toks);
   string lastTok = toks[length - 1];
+
+
   bool programShouldRunInBackground = (lastTok.compare("&") == 0);
   if(programShouldRunInBackground){
     // Remove the & at the end of the tok array
@@ -348,7 +346,9 @@ void printQueue(){
 //This function executes a command from the history queue
 void historyCommand(char* toks[]){
   int size = history.size();
+
   string argument = toks[1];
+
   Command node;
   char **temp;
 
@@ -357,6 +357,7 @@ void historyCommand(char* toks[]){
     if (history.size() != 0) { //if there is history
       node = history.back();
       string comp = (node.getParts())[0]; //string used for comparison
+
       if(comp.compare("!") != 0) { //if previous command is not "!!" or "!X"
         temp = node.getParts();
 
@@ -380,6 +381,10 @@ void historyCommand(char* toks[]){
 
     //get the X from !X
     string convert = toks[1];
+
+    // null = convert.empty();
+    // cout << "historyCommand convert null: " << null << endl;
+
     int n = atoi(convert.c_str());
 
     //test if the history queue is even as long as the int
@@ -422,15 +427,13 @@ void historyCommand(char* toks[]){
 } //end historyCommand()
 
 
-void displayHelp(){
-
-  int length = lengthOfTokenArray();
+void displayHelp(char* toks[]){
+  int length = lengthOfTokenArray(toks);
   if(length != 1){
     cout << "Usage: $help\n";
     return;
   }
-
-  string help = "BlueShell by Will Taylor & James Stewart\nThese commands are internal to the shell.\n\nhelp - Displays a list of internal commands with their descriptions\nexit - Terminates the BlueShell application\nquit - Terminates the BlueShell application\ncd DIRECTORY - Switches the current working directory to DIRECTORY\nhistory - Displays a list of the last 10 executed user commands\n!! - Executes the most recent command in the history\n!N - Where N is a positive integer, the Nth command in the history queue is executed\nalarm N - Where in is a positive integer, it sets an alarm that will go off in N seconds. Only one alarm can be set at once. If N=0, then any previously set alarm will be canceled.\n\n";
+  string help = "BlueShell by Will Taylor & James Stewart\nThese commands are internal to the shell.\n\nhelp - Displays a list of internal commands with their descriptions\nexit - Terminates the BlueShell application\nquit - Terminates the BlueShell application\ncd DIRECTORY - Switches the current working directory to DIRECTORY\nhistory - Displays a list of the last 10 executed user commands\n!! - Executes the most recent command in the history\n!N - Where N is a positive integer, the Nth command in the history queue is executed\nalarm N - Where in is a positive integer, it sets an alarm that will go off in N seconds. Only one alarm can be set at once. If N=0, then any previously set alarm will be canceled.\n";
   cout << help;
 }
 
@@ -445,7 +448,7 @@ void displayPrompt(){
 void cd(char* toks[]){
   // Wrapper of chdir function to implement the cd command
 
-  int length = lengthOfTokenArray();
+  int length = lengthOfTokenArray(toks);
   if(length != 2){
     cout << "Usage: $cd dir, where dir is a string representing a relative directory.\n";
     return;
@@ -470,15 +473,16 @@ void cd(char* toks[]){
   if(status != 0) perror("Directory change failed.\n");
 }
 
-int lengthOfTokenArray(){
+int lengthOfTokenArray(char* toks[]){
 
   int ii;
+  int answer = 0;
   for( ii=0; toks[ii] != NULL; ii++ )
     {
-      // We're just looping here...what a silly way to do this
+      answer = answer + 1;
     }
 
-  return ii;
+  return answer;
 }
 
 void reapZombieChild(int s){
@@ -492,7 +496,7 @@ void alarmHandler(int s){
 
 void setAlarm(char* toks[]){
 
-  int length = lengthOfTokenArray();
+  int length = lengthOfTokenArray(toks);
   if(length != 2){
     perror("Usage: $alarm N, where N is an integer >= 0.");
     return;
@@ -518,9 +522,10 @@ void setAlarm(char* toks[]){
   } else {
     cout << "Alarm set to go off in " << seconds << " seconds.\n";
   }
+
 }
 
-void fixTokArray(){
+char* fixTokArray(char* toks[]){
 
   // Any time we find < or > in the token array, delete it and
   // the proceeding token, then shift the rest of the array to
@@ -534,7 +539,7 @@ void fixTokArray(){
     for( ii=0; toks[ii] != NULL; ii++ ){
 
         if( !strcmp(toks[ii], ">") || !strcmp(toks[ii], "<")){
-          int length = lengthOfTokenArray();
+          int length = lengthOfTokenArray(toks);
           std::copy( (toks + ii + 2), (toks + length), (toks + ii) );
 
           toks[length - 1] = NULL;
@@ -556,6 +561,8 @@ void fixTokArray(){
       solved = true;
     }
   }
+
+  return *toks;
 }
 
 void exitBlueShell(){
