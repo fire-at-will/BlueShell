@@ -80,8 +80,8 @@ void Command::setParts(char* x[]) {
 void displayPrompt();
 
 void exitBlueShell();
-int lengthOfTokenArray();
-void fixTokArray();
+int lengthOfTokenArray(char* toks[]);
+char* fixTokArray(char* toks[]);
 
 // Signal Handlers
 void alarmHandler(int s);
@@ -101,7 +101,7 @@ void setAlarm(char* toks[]);
 void executeExternalCommand(char* toks[]);
 
 // Other Internal Command Functions
-void displayHelp();
+void displayHelp(char* toks[]);
 void cd(char* toks[]);
 
 //*********************************************************
@@ -124,7 +124,6 @@ using namespace std;
 //*********************************************************
 
 queue <Command> history;     // Queue to hold the command history in
-char **toks;
 char **command1;
 char **command2;
 
@@ -137,6 +136,8 @@ string blue_shell_ascii_art = "                                              `.\
 //
 //*********************************************************
 int main( int argc, char *argv[] ){
+
+  char **toks;
 
   // local variables
   int ii;
@@ -205,7 +206,7 @@ void executeInternalCommand(char* toks[]){
   if(command.compare("history") == 0){
     printQueue();
   } else if(command.compare("help") == 0){
-    displayHelp();
+    displayHelp(toks);
   } else if( (command.compare("quit") == 0)  || (command.compare("exit") == 0) ){
     exitBlueShell();
   } else if(command.compare("cd") == 0){
@@ -223,8 +224,10 @@ void executeExternalCommand(char* toks[]){
   int child_status;
 
   // Check to see if we need to let the child run in the background or not
-  int length = lengthOfTokenArray();
+  int length = lengthOfTokenArray(toks);
   string lastTok = toks[length - 1];
+
+
   bool programShouldRunInBackground = (lastTok.compare("&") == 0);
   if(programShouldRunInBackground){
     // Remove the & at the end of the tok array
@@ -272,7 +275,6 @@ void executeExternalCommand(char* toks[]){
 
     bool changedIO = false;
 
-
     int ii;
     for( ii=0; toks[ii] != NULL; ii++ ){
         string command = toks[ii];
@@ -300,7 +302,7 @@ void executeExternalCommand(char* toks[]){
     }
 
     if(changedIO){
-      fixTokArray();
+      fixTokArray(toks);
     }
     // Exec and run the program specificied by user
     // Exec documentation at:
@@ -381,7 +383,9 @@ void printQueue(){
 //This function executes a command from the history queue
 void historyCommand(char* toks[]){
   int size = history.size();
+
   string argument = toks[1];
+
   Command node;
   char **temp;
 
@@ -390,6 +394,7 @@ void historyCommand(char* toks[]){
     if (history.size() != 0) { //if there is history
       node = history.back();
       string comp = (node.getParts())[0]; //string used for comparison
+
       if(comp.compare("!") != 0) { //if previous command is not "!!" or "!X"
         temp = node.getParts();
 
@@ -413,6 +418,10 @@ void historyCommand(char* toks[]){
 
     //get the X from !X
     string convert = toks[1];
+
+    // null = convert.empty();
+    // cout << "historyCommand convert null: " << null << endl;
+
     int n = atoi(convert.c_str());
 
     //test if the history queue is even as long as the int
@@ -455,8 +464,8 @@ void historyCommand(char* toks[]){
 } //end historyCommand()
 
 
-void displayHelp(){
-  int length = lengthOfTokenArray();
+void displayHelp(char* toks[]){
+  int length = lengthOfTokenArray(toks);
   if(length != 1){
     cout << "Usage: $help\n";
     return;
@@ -476,7 +485,7 @@ void displayPrompt(){
 void cd(char* toks[]){
   // Wrapper of chdir function to implement the cd command
 
-  int length = lengthOfTokenArray();
+  int length = lengthOfTokenArray(toks);
   if(length != 2){
     cout << "Usage: $cd dir, where dir is a string representing a relative directory.\n";
     return;
@@ -501,7 +510,7 @@ void cd(char* toks[]){
   if(status != 0) perror("Directory change failed.\n");
 }
 
-int lengthOfTokenArray(){
+int lengthOfTokenArray(char* toks[]){
 
   int ii;
   int answer = 0;
@@ -524,7 +533,7 @@ void alarmHandler(int s){
 
 void setAlarm(char* toks[]){
 
-  int length = lengthOfTokenArray();
+  int length = lengthOfTokenArray(toks);
   if(length != 2){
     perror("Usage: $alarm N, where N is an integer >= 0.");
     return;
@@ -553,7 +562,7 @@ void setAlarm(char* toks[]){
 
 }
 
-void fixTokArray(){
+char* fixTokArray(char* toks[]){
 
   // Any time we find < or > in the token array, delete it and
   // the proceeding token, then shift the rest of the array to
@@ -567,7 +576,7 @@ void fixTokArray(){
     for( ii=0; toks[ii] != NULL; ii++ ){
 
         if( !strcmp(toks[ii], ">") || !strcmp(toks[ii], "<")){
-          int length = lengthOfTokenArray();
+          int length = lengthOfTokenArray(toks);
           std::copy( (toks + ii + 2), (toks + length), (toks + ii) );
 
           toks[length - 1] = NULL;
@@ -589,6 +598,8 @@ void fixTokArray(){
       solved = true;
     }
   }
+
+  return *toks;
 }
 
 void exitBlueShell(){
