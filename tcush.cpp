@@ -274,7 +274,7 @@ void executeExternalCommand(char* toks[]){
     }
 
     if(changedIO){
-      fixTokArray();
+      fixTokArray(toks);
     }
     // Exec and run the program specificied by user
     // Exec documentation at:
