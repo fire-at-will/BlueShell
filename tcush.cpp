@@ -398,19 +398,25 @@ void printQueue(){
 }
 
 void runPipedCommand( char** toks, int pipingIndex){
-  char** firstCommand;
-  char** secondCommand;
+  char** firstCommand = (char**) malloc( (128) * sizeof(char*));
+  char** secondCommand = (char**) malloc((128) * sizeof(char*));
 
   int pipefd[2];
-  int pid, pid2;
+  int pid, pid2, status;
 
   // firstCommand needs the contents of toks until the '|'
   for(int ii = 0; ii < pipingIndex; ii++){
     firstCommand[ii] = toks[ii];
   }
 
+  int firstCommandLen = lengthOfTokenArray(firstCommand);
+  firstCommand[firstCommandLen + 1] = '\0';
+
   // Pointer arithmetic that gives us the half of the toks array after the '|'
   secondCommand = toks + (pipingIndex + 1);
+
+  int secondCommandLen = lengthOfTokenArray(secondCommand);
+  secondCommand[secondCommandLen + 1] = '\0';
 
   // Create pipe...file descriptors are going into pipefd
   pipe(pipefd);
@@ -419,7 +425,7 @@ void runPipedCommand( char** toks, int pipingIndex){
 
   if(pid == 0){
     // Child, handle first command
-    dup2(pipefd[0], 0);
+    dup2(pipefd[1], 1);
     close(pipefd[1]);
     execvp(firstCommand[0], firstCommand);
 
@@ -430,13 +436,18 @@ void runPipedCommand( char** toks, int pipingIndex){
     pid2 = fork();
     if(pid2 == 0){
       // Child process 2, handle second command
-      dup2(pipefd[1], 1);
+      dup2(pipefd[0], 0);
       close(pipefd[0]);
 
-      execvp(firstCommand[0], firstCommand);
+      execvp(secondCommand[0], secondCommand);
 
     } else {
-      cout << "Parent is free\n";
+      //for (int i = 0; i < 2; i++) wait(&status);
+      //while (waitpid((pid_t)(-1), 0, WNOHANG) > 0) {
+
+      //}
+      int child_pid = waitpid(pid, &status, WUNTRACED);
+      child_pid = waitpid(pid2, &status, WUNTRACED);
     }
   }
 
