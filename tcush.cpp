@@ -99,6 +99,7 @@ void setAlarm(char* toks[]);
 
 // External Command Execution Functions
 void executeExternalCommand(char* toks[]);
+void runPipedCommand( char** toks, int pipingIndex);
 
 // Other Internal Command Functions
 void displayHelp(char* toks[]);
@@ -216,7 +217,6 @@ void executeInternalCommand(char* toks[]){
         close(out);
 
         changedIO = true;
-
       }
 
       if(command.compare("<") == 0){
@@ -253,7 +253,6 @@ void executeInternalCommand(char* toks[]){
     dup2(0, 0);
     dup2(1, 1);
   }
-
 }
 
 void executeExternalCommand(char* toks[]){
@@ -268,6 +267,24 @@ void executeExternalCommand(char* toks[]){
   if(programShouldRunInBackground){
     // Remove the & at the end of the tok array
     toks[length - 1] = NULL;
+  }
+
+  // Check for piping
+  int pipingIndex = -1;
+  for(int ii=0; toks[ii] != NULL; ii++ ){
+      string command = toks[ii];
+
+      if(command.compare("|") == 0){
+        pipingIndex = ii;
+      }
+
+  }
+
+  if(pipingIndex == 0){
+    cout << "Piping error: must have 2 commands to pipe\n";
+  } else if (pipingIndex > 0){
+    runPipedCommand(toks, pipingIndex);
+    return;
   }
 
   pid = fork();
@@ -285,7 +302,7 @@ void executeExternalCommand(char* toks[]){
     bool changedIO = false;
 
     int ii;
-    for( ii=0; toks[ii] != NULL; ii++ ){
+    for( ii=0; toks[ii] != NULL; ii++){
         string command = toks[ii];
 
         if(command.compare(">") == 0){
@@ -380,6 +397,52 @@ void printQueue(){
   }
 }
 
+void runPipedCommand( char** toks, int pipingIndex){
+  char** firstCommand;
+  char** secondCommand;
+
+  int pipefd[2];
+  int pid, pid2;
+
+  // firstCommand needs the contents of toks until the '|'
+  for(int ii = 0; ii < pipingIndex; ii++){
+    firstCommand[ii] = toks[ii];
+  }
+
+  // Pointer arithmetic that gives us the half of the toks array after the '|'
+  secondCommand = toks + (pipingIndex + 1);
+
+  // Create pipe...file descriptors are going into pipefd
+  pipe(pipefd);
+
+  pid = fork();
+
+  if(pid == 0){
+    // Child, handle first command
+    dup2(pipefd[0], 0);
+    close(pipefd[1]);
+    execvp(firstCommand[0], firstCommand);
+
+  } else {
+    // Parent
+    // Now, fork another child.
+
+    pid2 = fork();
+    if(pid2 == 0){
+      // Child process 2, handle second command
+      dup2(pipefd[1], 1);
+      close(pipefd[0]);
+
+      execvp(firstCommand[0], firstCommand);
+
+    } else {
+      cout << "Parent is free\n";
+    }
+  }
+
+
+}
+
 //This function executes a command from the history queue
 void historyCommand(char* toks[]){
   int size = history.size();
@@ -418,9 +481,6 @@ void historyCommand(char* toks[]){
 
     //get the X from !X
     string convert = toks[1];
-
-    // null = convert.empty();
-    // cout << "historyCommand convert null: " << null << endl;
 
     int n = atoi(convert.c_str());
 
