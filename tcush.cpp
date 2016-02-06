@@ -202,6 +202,38 @@ void executeInternalCommand(char* toks[]){
 
   string command = toks[0];
 
+  bool changedIO = false;
+
+  int ii;
+  for( ii=0; toks[ii] != NULL; ii++ ){
+      string command = toks[ii];
+
+      if(command.compare(">") == 0){
+        // Redirect output
+        int out = open(toks[ii + 1], O_WRONLY | O_TRUNC | O_CREAT, S_IRUSR | S_IRGRP | S_IWGRP | S_IWUSR);
+
+        dup2(out, 1);     // Stdout
+        close(out);
+
+        changedIO = true;
+
+      }
+
+      if(command.compare("<") == 0){
+        // Redirect input
+        int in = open(toks[ii + 1], O_RDONLY);
+
+        dup2(in, 0);     // Stdin
+        close(in);
+
+        changedIO = true;
+      }
+  }
+
+  if(changedIO){
+    fixTokArray(toks);
+  }
+
   if(command.compare("history") == 0){
     printQueue();
   } else if(command.compare("help") == 0){
@@ -216,6 +248,12 @@ void executeInternalCommand(char* toks[]){
     setAlarm(toks);
   }
 
+  if(changedIO){
+    // Revert to standard I/O
+    dup2(0, 0);
+    dup2(1, 1);
+  }
+
 }
 
 void executeExternalCommand(char* toks[]){
@@ -225,7 +263,6 @@ void executeExternalCommand(char* toks[]){
   // Check to see if we need to let the child run in the background or not
   int length = lengthOfTokenArray(toks);
   string lastTok = toks[length - 1];
-
 
   bool programShouldRunInBackground = (lastTok.compare("&") == 0);
   if(programShouldRunInBackground){
