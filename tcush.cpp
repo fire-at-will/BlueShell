@@ -37,7 +37,7 @@ using namespace std;
 
 //*********************************************************
 //
-// Command Object
+// Command Object - stored in the history queue
 //
 //*********************************************************
 class Command {
@@ -180,15 +180,24 @@ int main( int argc, char *argv[] ){
   return( retval );
 }
 
+//*********************************************************
+//
+// commandIsInternal()
+//
+//  method that returns a boolean to determine whether a command
+//  is internal or external
+//
+//*********************************************************
+
 bool commandIsInternal(string command){
 
   // Function takes in tok[0] of the tokens and if
   // the command is an internal shell command, returns
   // true, else returns false.
 
-  int ii = 0;
+int ii;
 
-  for(ii; ii < NUMBER_OF_INTERNAL_COMMANDS; ii++){
+  for(ii = 0; ii < NUMBER_OF_INTERNAL_COMMANDS; ii++){
 
     string this_command = INTERNAL_COMMANDS[ii];
     if( !strcmp(this_command.c_str(), command.c_str() ) ){
@@ -198,6 +207,14 @@ bool commandIsInternal(string command){
   }
   return false;
 }
+
+//*********************************************************
+//
+// executeInternalCommand()
+//
+//  method that executes the internal command entered by the user
+//
+//*********************************************************
 
 void executeInternalCommand(char* toks[]){
 
@@ -254,6 +271,14 @@ void executeInternalCommand(char* toks[]){
     dup2(1, 1);
   }
 }
+
+//*********************************************************
+//
+// executeExternalCommand()
+//
+//  method that execute the external command entered by the user
+//
+//*********************************************************
 
 void executeExternalCommand(char* toks[]){
   pid_t pid, child_pid;
@@ -354,6 +379,15 @@ void executeExternalCommand(char* toks[]){
   }
 }
 
+//*********************************************************
+//
+// recordCommand()
+//
+//  creates the command object and pushes it into the
+//  history queue
+//
+//*********************************************************
+
 void recordCommand(char* toks[]){
   // This function pushes commands onto the history queue.
 
@@ -385,6 +419,14 @@ void recordCommand(char* toks[]){
 
 }
 
+//*********************************************************
+//
+// printQueue()
+//
+//  method that prints out the queue to standard out
+//
+//*********************************************************
+
 void printQueue(){
   int size = history.size();
   int ii;
@@ -396,6 +438,14 @@ void printQueue(){
       history.push(node);
   }
 }
+
+//*********************************************************
+//
+// runPipedCommand()
+//
+//
+//
+//*********************************************************
 
 void runPipedCommand( char** toks, int pipingIndex){
   char** firstCommand = (char**) malloc( (128) * sizeof(char*));
@@ -450,9 +500,16 @@ void runPipedCommand( char** toks, int pipingIndex){
       child_pid = waitpid(pid2, &status, WUNTRACED);
     }
   }
-
-
 }
+
+//*********************************************************
+//
+// historyCommand()
+//
+//  method that executes a command previously executed and
+//  stored in history
+//
+//*********************************************************
 
 //This function executes a command from the history queue
 void historyCommand(char* toks[]){
@@ -534,6 +591,13 @@ void historyCommand(char* toks[]){
   } //end else
 } //end historyCommand()
 
+//*********************************************************
+//
+// displayHelp()
+//
+//  method that prints out help for the user
+//
+//*********************************************************
 
 void displayHelp(char* toks[]){
   int length = lengthOfTokenArray(toks);
@@ -545,13 +609,29 @@ void displayHelp(char* toks[]){
   cout << help;
 }
 
-// This function displays the prompt to the user.
+//*********************************************************
+//
+// displayPrompt()
+//
+//  method that prints the prompt for the user
+//
+//*********************************************************
+
 void displayPrompt(){
   time_t t = time(0);   // get time
   struct tm * now = localtime( & t );
   cout << (now->tm_mon + 1) << '/' <<  now->tm_mday << " " << now->tm_hour << ":" << now->tm_min << "$ ";
   std::cout.flush();
 }
+
+//*********************************************************
+//
+// cd()
+//
+//  method that executes the internal function cd();
+//  internal
+//
+//*********************************************************
 
 void cd(char* toks[]){
   // Wrapper of chdir function to implement the cd command
@@ -580,6 +660,15 @@ void cd(char* toks[]){
 
   if(status != 0) perror("Directory change failed.\n");
 }
+
+//*********************************************************
+//
+// lengthOfTokenArray()
+//
+//  method that returns the length of the array passed
+//  into the function
+//
+//*********************************************************
 
 int lengthOfTokenArray(char* toks[]){
 
