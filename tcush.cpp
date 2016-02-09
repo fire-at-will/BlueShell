@@ -4,6 +4,29 @@
 // Operating Systems
 // Project #2: Writing Your Own Shell: BlueShell
 //
+// $help - Displays a list of internal commands with their descriptions
+//
+// $cd DIRECTORY - Switches the current working directory to DIRECTORY. We used
+//                   the chdir() function to accomplish this.
+//
+// $alarm N - Where in is a positive integer, it sets an alarm that will go off
+//             in N seconds. Only one alarm can be set at once.
+//             If N=0, then any previously set alarm will be canceled.
+//             The feature uses the alarm() system call, and then the function
+//             alarmHandler() receives the signal sent from the kernel and
+//             displays the alarm message.
+//
+// Other internal commands:
+//
+// $exit & $quit - Terminates the BlueShell application
+//
+// $history - Displays a list of the last 10 executed user commands
+//
+// $!! - Executes the most recent command in the history
+//
+// $!N - Where N is a positive integer, the Nth command in the history queue is
+//         executed
+//
 //*********************************************************
 
 
@@ -446,7 +469,8 @@ void printQueue(){
 //
 // runPipedCommand()
 //
-//
+// Execute two commands that are connected by an
+// I/O pipe
 //
 //*********************************************************
 
