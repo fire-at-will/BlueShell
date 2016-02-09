@@ -471,35 +471,30 @@ void runPipedCommand( char** toks, int pipingIndex){
   // Create pipe...file descriptors are going into pipefd
   pipe(pipefd);
 
+  // Execute first command after setting up pipe
   pid = fork();
-
   if(pid == 0){
-    // Child, handle first command
-    dup2(pipefd[1], 1);
-    close(pipefd[1]);
+    // Child
+    dup2(pipefd[1], 1);   // Hook up to output side of pipe
+    close(pipefd[0]);
     execvp(firstCommand[0], firstCommand);
-
-  } else {
-    // Parent
-    // Now, fork another child.
-
-    pid2 = fork();
-    if(pid2 == 0){
-      // Child process 2, handle second command
-      dup2(pipefd[0], 0);
-      close(pipefd[0]);
-
-      execvp(secondCommand[0], secondCommand);
-
-    } else {
-      //for (int i = 0; i < 2; i++) wait(&status);
-      //while (waitpid((pid_t)(-1), 0, WNOHANG) > 0) {
-
-      //}
-      int child_pid = waitpid(pid, &status, WUNTRACED);
-      child_pid = waitpid(pid2, &status, WUNTRACED);
-    }
   }
+
+  // Execute second command after setting up pipe
+  pid2 = fork();
+  if(pid2 == 0){
+    dup2(pipefd[0], 0);   // Hook up to input side of pipe
+    close(pipefd[1]);
+    execvp(secondCommand[0], secondCommand);
+  }
+
+  // Close up the pipe
+  close(pipefd[0]);
+  close(pipefd[1]);
+
+  // Wait on children
+  while ((pid = wait(&status)) != -1){}
+
 }
 
 //*********************************************************
