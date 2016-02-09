@@ -37,7 +37,7 @@ using namespace std;
 
 //*********************************************************
 //
-// Command Object
+// Command Object - stored in the history queue
 //
 //*********************************************************
 class Command {
@@ -99,6 +99,7 @@ void setAlarm(char* toks[]);
 
 // External Command Execution Functions
 void executeExternalCommand(char* toks[]);
+void runPipedCommand( char** toks, int pipingIndex);
 
 // Other Internal Command Functions
 void displayHelp(char* toks[]);
@@ -173,12 +174,20 @@ int main( int argc, char *argv[] ){
 	   }
 
      recordCommand(toks);
-
     }
 
   // return to calling environment
   return( retval );
 }
+
+//*********************************************************
+//
+// commandIsInternal()
+//
+//  method that returns a boolean to determine whether a command
+//  is internal or external
+//
+//*********************************************************
 
 bool commandIsInternal(string command){
 
@@ -186,6 +195,11 @@ bool commandIsInternal(string command){
   // the command is an internal shell command, returns
   // true, else returns false.
 
+<<<<<<< HEAD
+=======
+int ii;
+
+>>>>>>> piping
   for(ii = 0; ii < NUMBER_OF_INTERNAL_COMMANDS; ii++){
 
     string this_command = INTERNAL_COMMANDS[ii];
@@ -197,9 +211,48 @@ bool commandIsInternal(string command){
   return false;
 }
 
+//*********************************************************
+//
+// executeInternalCommand()
+//
+//  method that executes the internal command entered by the user
+//
+//*********************************************************
+
 void executeInternalCommand(char* toks[]){
 
   string command = toks[0];
+
+  bool changedIO = false;
+
+  int ii;
+  for( ii=0; toks[ii] != NULL; ii++ ){
+      string command = toks[ii];
+
+      if(command.compare(">") == 0){
+        // Redirect output
+        int out = open(toks[ii + 1], O_WRONLY | O_TRUNC | O_CREAT, S_IRUSR | S_IRGRP | S_IWGRP | S_IWUSR);
+
+        dup2(out, 1);     // Stdout
+        close(out);
+
+        changedIO = true;
+      }
+
+      if(command.compare("<") == 0){
+        // Redirect input
+        int in = open(toks[ii + 1], O_RDONLY);
+
+        dup2(in, 0);     // Stdin
+        close(in);
+
+        changedIO = true;
+      }
+  }
+
+  if(changedIO){
+    fixTokArray(toks);
+  }
 
   if(command.compare("history") == 0){
     printQueue();
@@ -215,7 +268,20 @@ void executeInternalCommand(char* toks[]){
     setAlarm(toks);
   }
 
+  if(changedIO){
+    // Revert to standard I/O
+    dup2(0, 0);
+    dup2(1, 1);
+  }
 }
+
+//*********************************************************
+//
+// executeExternalCommand()
+//
+//  method that execute the external command entered by the user
+//
+//*********************************************************
 
 void executeExternalCommand(char* toks[]){
   pid_t pid, child_pid;
@@ -225,31 +291,28 @@ void executeExternalCommand(char* toks[]){
   int length = lengthOfTokenArray(toks);
   string lastTok = toks[length - 1];
 
-
   bool programShouldRunInBackground = (lastTok.compare("&") == 0);
   if(programShouldRunInBackground){
     // Remove the & at the end of the tok array
     toks[length - 1] = NULL;
   }
 
-  // Determine if we need to do any piping.
-  bool needPiping = false;
-  int pipingCharAt = -1;
+  // Check for piping
+  int pipingIndex = -1;
   for(int ii=0; toks[ii] != NULL; ii++ ){
       string command = toks[ii];
 
       if(command.compare("|") == 0){
-        needPiping = true;
-        pipingCharAt = ii;
+        pipingIndex = ii;
       }
+
   }
 
-  int pipefd[2];
-  if(needPiping){
-    // Make a pipe.
-    // file descripters go in pipefd[0] & pipefd[1]
-    pipe(pipefd);
-
+  if(pipingIndex == 0){
+    cout << "Piping error: must have 2 commands to pipe\n";
+  } else if (pipingIndex > 0){
+    runPipedCommand(toks, pipingIndex);
+    return;
   }
 
   pid = fork();
@@ -261,20 +324,13 @@ void executeExternalCommand(char* toks[]){
       setpgid(0, 0);
     }
 
-    // Pipe handling
-    if(needPiping){
-      // Child handles second part of the command
-      dup2(pipefd[0], 0);  // Replace stdin with input side of pipe
-      close(pipefd[1]);    // Close output side of pipe
-    }
-
     // I/O Redirection
     // Check for I/O redirection
 
     bool changedIO = false;
 
     int ii;
-    for( ii=0; toks[ii] != NULL; ii++ ){
+    for( ii=0; toks[ii] != NULL; ii++){
         string command = toks[ii];
 
         if(command.compare(">") == 0){
@@ -313,16 +369,6 @@ void executeExternalCommand(char* toks[]){
   } else {
     // We are the parent.
 
-    if(needPiping){
-      // Parent handles first part of command
-
-      // Replace stdout with output on the pipe
-      dup2(pipefd[1], 1);
-
-      // Close input part of pipe
-      close(pipefd[0]);
-    }
-
     if(!programShouldRunInBackground){
       // Run in foreground
       // Wait on the child process to terminate
@@ -335,6 +381,15 @@ void executeExternalCommand(char* toks[]){
 
   }
 }
+
+//*********************************************************
+//
+// recordCommand()
+//
+//  creates the command object and pushes it into the
+//  history queue
+//
+//*********************************************************
 
 void recordCommand(char* toks[]){
   // This function pushes commands onto the history queue.
@@ -359,12 +414,21 @@ void recordCommand(char* toks[]){
   node.setLine(command);
   std::copy(toks, toks+128, temp);
   node.setParts(temp);
+  // Push the command string into the front of the queue
   history.push(node);
 
   // If the size of the queue is over 10, pop the last command off
   if(history.size() > 10) history.pop();
 
 }
+
+//*********************************************************
+//
+// printQueue()
+//
+//  method that prints out the queue to standard out
+//
+//*********************************************************
 
 void printQueue(){
   int size = history.size();
@@ -377,6 +441,73 @@ void printQueue(){
       history.push(node);
   }
 }
+
+//*********************************************************
+//
+// runPipedCommand()
+//
+//
+//
+//*********************************************************
+
+void runPipedCommand( char** toks, int pipingIndex){
+  char** firstCommand = (char**) malloc( (128) * sizeof(char*));
+  char** secondCommand = (char**) malloc((128) * sizeof(char*));
+
+  int pipefd[2];
+  int pid, pid2, status;
+
+  // firstCommand needs the contents of toks until the '|'
+  for(int ii = 0; ii < pipingIndex; ii++){
+    firstCommand[ii] = toks[ii];
+  }
+
+  int firstCommandLen = lengthOfTokenArray(firstCommand);
+  firstCommand[firstCommandLen + 1] = '\0';
+
+  // Pointer arithmetic that gives us the half of the toks array after the '|'
+  secondCommand = toks + (pipingIndex + 1);
+
+  int secondCommandLen = lengthOfTokenArray(secondCommand);
+  secondCommand[secondCommandLen + 1] = '\0';
+
+  // Create pipe...file descriptors are going into pipefd
+  pipe(pipefd);
+
+  // Execute first command after setting up pipe
+  pid = fork();
+  if(pid == 0){
+    // Child
+    dup2(pipefd[1], 1);   // Hook up to output side of pipe
+    close(pipefd[0]);
+    execvp(firstCommand[0], firstCommand);
+  }
+
+  // Execute second command after setting up pipe
+  pid2 = fork();
+  if(pid2 == 0){
+    dup2(pipefd[0], 0);   // Hook up to input side of pipe
+    close(pipefd[1]);
+    execvp(secondCommand[0], secondCommand);
+  }
+
+  // Close up the pipe
+  close(pipefd[0]);
+  close(pipefd[1]);
+
+  // Wait on children
+  while ((pid = wait(&status)) != -1){}
+
+}
+
+//*********************************************************
+//
+// historyCommand()
+//
+//  method that executes a command previously executed and
+//  stored in history
+//
+//*********************************************************
 
 //This function executes a command from the history queue
 void historyCommand(char* toks[]){
@@ -416,9 +547,6 @@ void historyCommand(char* toks[]){
 
     //get the X from !X
     string convert = toks[1];
-
-    // null = convert.empty();
-    // cout << "historyCommand convert null: " << null << endl;
 
     int n = atoi(convert.c_str());
 
@@ -461,6 +589,13 @@ void historyCommand(char* toks[]){
   } //end else
 } //end historyCommand()
 
+//*********************************************************
+//
+// displayHelp()
+//
+//  method that prints out help for the user
+//
+//*********************************************************
 
 void displayHelp(char* toks[]){
   int length = lengthOfTokenArray(toks);
@@ -472,13 +607,29 @@ void displayHelp(char* toks[]){
   cout << help;
 }
 
-// This function displays the prompt to the user.
+//*********************************************************
+//
+// displayPrompt()
+//
+//  method that prints the prompt for the user
+//
+//*********************************************************
+
 void displayPrompt(){
   time_t t = time(0);   // get time
   struct tm * now = localtime( & t );
   cout << (now->tm_mon + 1) << '/' <<  now->tm_mday << " " << now->tm_hour << ":" << now->tm_min << "$ ";
   std::cout.flush();
 }
+
+//*********************************************************
+//
+// cd()
+//
+//  method that executes the internal function cd();
+//  internal
+//
+//*********************************************************
 
 void cd(char* toks[]){
   // Wrapper of chdir function to implement the cd command
@@ -507,6 +658,15 @@ void cd(char* toks[]){
 
   if(status != 0) perror("Directory change failed.\n");
 }
+
+//*********************************************************
+//
+// lengthOfTokenArray()
+//
+//  method that returns the length of the array passed
+//  into the function
+//
+//*********************************************************
 
 int lengthOfTokenArray(char* toks[]){
 
