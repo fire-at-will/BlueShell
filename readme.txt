@@ -6,7 +6,7 @@
 //
 //*********************************************************
 
-Time spent: Maybe 10 hours each
+Time spent: > 21 hours each
 
 Three internal commands implemented for grade:
 
@@ -34,7 +34,11 @@ $!N - Where N is a positive integer, the Nth command in the history queue is
         executed
 
 Difficulties:
-    - James had a lot of difficulty in implementing the history features due
+    - James had a lot of difficulty in first creating the Command object which
+    is stored in the history queue, and then in implementing the history callback
+    functions such as "!!" and "!X", where "X" is some integer 1-10. The most
+    difficult problem encountered was resolving an issue where a shallow copy
+    between arrays was occurring.
 
     - While working on the project, James and I both learned how to use C++ and
     GitHub. While they both took a good bit of reading to get used to, they
@@ -43,6 +47,6 @@ Difficulties:
     like the queue class. Once we both got used to it, GitHub was an excellent
     tool in managing the code between the two of us and prevented many headaches
     that would have been caused by trying to manage different versions of code
-    on Dropbox or Google Drive. 
+    on Dropbox or Google Drive.
 
-Problems: Piping was never fully implemented.
+Problems: May not handle some complicated piping commands.
