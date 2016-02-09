@@ -384,7 +384,7 @@ void executeExternalCommand(char* toks[]){
 
     int exec = execvp(toks[0], toks);
 
-    if(exec < 0) perror("ERROR: Execution of external command has failed. Check for typos.");
+    if(exec < 0) perror("ERROR: Execution of external command has failed. Check for typos. Error");
 
   } else {
     // We are the parent.
@@ -556,11 +556,11 @@ void historyCommand(char* toks[]){
         }
       }
       else { //previous command is !!
-        cout << "The previous command is \"!!\" or \"!X\"" << endl;
+        cout << "Error: The previous command is \"!!\" or \"!X\"" << endl;
       }
     }
     else { //there is no history
-      cout << "There is no commands in history." << endl;
+      cout << "Error: There are no commands in history." << endl;
     }
   }
   else {
@@ -590,7 +590,7 @@ void historyCommand(char* toks[]){
       string comp = temp[0];
 
       if (comp.compare("!") == 0) {
-        cout << "The command you are asking for is \"!!\" or \"!X\"" << endl;
+        cout << "The command you are asking for is \"!!\" or \"!X\"." << endl;
       }
       else{
 
