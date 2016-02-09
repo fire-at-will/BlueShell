@@ -4,6 +4,8 @@
 // Operating Systems
 // Project #2: Writing Your Own Shell: BlueShell
 //
+// Due: Monday, Feb. 7 at Midnight
+//
 // $help - Displays a list of internal commands with their descriptions
 //
 // $cd DIRECTORY - Switches the current working directory to DIRECTORY. We used
