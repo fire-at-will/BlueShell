@@ -186,9 +186,7 @@ bool commandIsInternal(string command){
   // the command is an internal shell command, returns
   // true, else returns false.
 
-  int ii = 0;
-
-  for(ii; ii < NUMBER_OF_INTERNAL_COMMANDS; ii++){
+  for(ii = 0; ii < NUMBER_OF_INTERNAL_COMMANDS; ii++){
 
     string this_command = INTERNAL_COMMANDS[ii];
     if( !strcmp(this_command.c_str(), command.c_str() ) ){
