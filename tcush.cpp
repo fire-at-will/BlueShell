@@ -574,7 +574,7 @@ void historyCommand(char* toks[]){
     int n = atoi(convert.c_str());
 
     //test if the history queue is even as long as the int
-    if (n < history.size()) {
+    if (n < history.size()+1) {
 
       //loop through queue by popping and pushing and grab Nth command
       int size = history.size();
