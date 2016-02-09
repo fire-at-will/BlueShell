@@ -218,11 +218,8 @@ bool commandIsInternal(string command){
   // the command is an internal shell command, returns
   // true, else returns false.
 
-<<<<<<< HEAD
-=======
 int ii;
 
->>>>>>> piping
   for(ii = 0; ii < NUMBER_OF_INTERNAL_COMMANDS; ii++){
 
     string this_command = INTERNAL_COMMANDS[ii];
