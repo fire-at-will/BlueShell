@@ -626,7 +626,7 @@ void displayHelp(char* toks[]){
     cout << "Usage: $help\n";
     return;
   }
-  string help = "BlueShell by Will Taylor & James Stewart\nThese commands are internal to the shell.\n\nhelp - Displays a list of internal commands with their descriptions\nexit - Terminates the BlueShell application\nquit - Terminates the BlueShell application\ncd DIRECTORY - Switches the current working directory to DIRECTORY\nhistory - Displays a list of the last 10 executed user commands\n!! - Executes the most recent command in the history\n!N - Where N is a positive integer, the Nth command in the history queue is executed\nalarm N - Where in is a positive integer, it sets an alarm that will go off in N seconds. Only one alarm can be set at once. If N=0, then any previously set alarm will be canceled.\n";
+  string help = "BlueShell by Will Taylor & James Stewart\nThese commands are internal to the shell.\n\nhelp - Displays a list of internal commands with their descriptions\nexit - Terminates the BlueShell application\nquit - Terminates the BlueShell application\ncd DIRECTORY - Switches the current working directory to DIRECTORY\nhistory - Displays a list of the last 10 executed user commands\n!! - Executes the most recent command in the history\n!N - Where N is a positive integer, the Nth command in the history queue is executed\nalarm N - Where N is a positive integer, an alarm is set that will go off in N seconds. Only one alarm may be set at one time. If N=0, then any previously set alarm will be canceled.\n";
   cout << help;
 }
 

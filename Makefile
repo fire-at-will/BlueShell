@@ -15,8 +15,8 @@ LIBS = -ll		#lfl on linux
 RM = /bin/rm
 RMOPTS = -f
 
-tcush: tcush.yy.o tcush.o
-	$(CPP) $(CPPOPTS) tcush.o tcush.yy.o -o tcush -ll
+blueshell: tcush.yy.o tcush.o
+	$(CPP) $(CPPOPTS) tcush.o tcush.yy.o -o blueshell -ll
 
 tcush.o: tcush.cpp
 	 $(CPP) $(CPPOPTS) -c tcush.cpp
